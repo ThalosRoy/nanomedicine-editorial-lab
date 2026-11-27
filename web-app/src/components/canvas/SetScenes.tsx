@@ -3,6 +3,7 @@ import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import {
   EDITORIAL_COLORS,
+  attachFresnelRim,
   type EditorialMaterialSet,
 } from '../../materials/editorialMaterials';
 import type { LigandMode, SetId } from '../../types/simulation';
@@ -136,7 +137,7 @@ function Set00EditorialEnvironment({
 }
 
 /* --------------------------------------------------------------------------
- * SET 01: Polymer Matrix Architecture (Pure Nanocellulose)
+ * SET 01: Polymer Matrix Architecture (Pure Nanocellulose + Gentle Breathing)
  * -------------------------------------------------------------------------- */
 function Set01PolymerMatrix({
   xrayMode,
@@ -147,13 +148,23 @@ function Set01PolymerMatrix({
   materials: EditorialMaterialSet;
   callbacks: InteractionCallbacks;
 }) {
+  const gelRef = useRef<THREE.Group>(null);
+  useFrame(({ clock }) => {
+    if (gelRef.current) {
+      const s = 1 + Math.sin(clock.getElapsedTime() * 1.1) * 0.012;
+      gelRef.current.scale.setScalar(s);
+    }
+  });
+
   return (
-    <NanocelluloseScaffold
-      scale={0.95}
-      cutaway={xrayMode}
-      materials={materials}
-      callbacks={callbacks}
-    />
+    <group ref={gelRef}>
+      <NanocelluloseScaffold
+        scale={0.95}
+        cutaway={xrayMode}
+        materials={materials}
+        callbacks={callbacks}
+      />
+    </group>
   );
 }
 
@@ -171,19 +182,28 @@ function Set02RosemaryCorona({
   materials: EditorialMaterialSet;
   callbacks: InteractionCallbacks;
 }) {
+  const unitRef = useRef<THREE.Group>(null);
+  useFrame(({ clock }) => {
+    if (unitRef.current) {
+      unitRef.current.position.y = Math.sin(clock.getElapsedTime() * 1.2) * 0.07;
+    }
+  });
+
   return (
-    <EditorialAgNPUnit
-      scale={1.45}
-      cutawayCorona={xrayMode}
-      withFolate={ligandMode !== 'base'}
-      materials={materials}
-      callbacks={callbacks}
-    />
+    <group ref={unitRef}>
+      <EditorialAgNPUnit
+        scale={1.45}
+        cutawayCorona={xrayMode}
+        withFolate={ligandMode !== 'base'}
+        materials={materials}
+        callbacks={callbacks}
+      />
+    </group>
   );
 }
 
 /* --------------------------------------------------------------------------
- * SET 03: Embedded Nanogel System (Protagonist — Folate ONLY on Internal AgNPs)
+ * SET 03: Embedded Nanogel System (Protagonist — Hydrogel Breathing + Brownian AgNPs)
  * -------------------------------------------------------------------------- */
 function Set03EmbeddedNanogel({
   xrayMode,
@@ -198,27 +218,53 @@ function Set03EmbeddedNanogel({
   materials: EditorialMaterialSet;
   callbacks: InteractionCallbacks;
 }) {
+  const scaffoldRef = useRef<THREE.Group>(null);
+  const agRefs = useRef<Array<THREE.Group | null>>([]);
   const visibleUnits = Math.max(3, Math.round(NANOGEL_POCKETS.length * agConcentration));
+
+  useFrame(({ clock }) => {
+    const t = clock.getElapsedTime();
+    if (scaffoldRef.current) {
+      scaffoldRef.current.scale.setScalar(1 + Math.sin(t * 1.1) * 0.012);
+    }
+    NANOGEL_POCKETS.forEach((pos, idx) => {
+      const grp = agRefs.current[idx];
+      if (!grp) return;
+      grp.position.set(
+        pos[0] * 0.95 + Math.sin(t * 1.3 + idx * 1.7) * 0.04,
+        pos[1] * 0.95 + Math.cos(t * 1.15 + idx * 2.1) * 0.045,
+        pos[2] * 0.95 + Math.sin(t * 1.05 + idx * 0.9) * 0.04
+      );
+    });
+  });
 
   return (
     <group>
-      <NanocelluloseScaffold
-        scale={0.95}
-        cutaway={xrayMode}
-        materials={materials}
-        callbacks={callbacks}
-      />
+      <group ref={scaffoldRef}>
+        <NanocelluloseScaffold
+          scale={0.95}
+          cutaway={xrayMode}
+          materials={materials}
+          callbacks={callbacks}
+        />
+      </group>
       {NANOGEL_POCKETS.map((pos, idx) =>
         idx < visibleUnits ? (
-          <EditorialAgNPUnit
+          <group
             key={idx}
+            ref={(el) => {
+              agRefs.current[idx] = el;
+            }}
             position={[pos[0] * 0.95, pos[1] * 0.95, pos[2] * 0.95]}
-            scale={idx === 0 ? 0.42 : 0.32}
-            cutawayCorona={idx === 0 && xrayMode}
-            withFolate={ligandMode !== 'base'}
-            materials={materials}
-            callbacks={callbacks}
-          />
+          >
+            <EditorialAgNPUnit
+              scale={idx === 0 ? 0.42 : 0.32}
+              cutawayCorona={idx === 0 && xrayMode}
+              withFolate={ligandMode !== 'base'}
+              materials={materials}
+              callbacks={callbacks}
+            />
+          </group>
         ) : null
       )}
     </group>
@@ -246,6 +292,7 @@ function Set04TumorInjection({
   const tumorGeos = useGlbGeometries(MODEL_PATHS.tumorMicroenv);
   const syringeGeos = useGlbGeometries(MODEL_PATHS.syringeInjector);
   const plungerRef = useRef<THREE.Mesh>(null);
+  const vesselRef = useRef<THREE.Mesh>(null);
   const dropsRef = useRef<THREE.Group>(null);
   const protonsRef = useRef<THREE.Group>(null);
   const releasedRef = useRef<THREE.Group>(null);
@@ -282,6 +329,10 @@ function Set04TumorInjection({
       plungerRef.current.position.y = -injectT * 1.75;
     }
 
+    if (vesselRef.current) {
+      vesselRef.current.scale.setScalar(1 + Math.sin(t * 2.4) * 0.012);
+    }
+
     if (dropsRef.current) {
       dropsRef.current.children.forEach((child, idx) => {
         const cyc = (t * 1.15 + idx / 8) % 1;
@@ -293,7 +344,11 @@ function Set04TumorInjection({
     if (protonsRef.current) {
       protonsRef.current.children.forEach((child, idx) => {
         const p = protons[idx];
-        child.position.set(p.x, p.y + Math.sin(t * 1.4 + p.phase) * 0.22, p.z);
+        child.position.set(
+          p.x + Math.cos(t * 1.1 + p.phase) * 0.14,
+          p.y + Math.sin(t * 1.4 + p.phase) * 0.22,
+          p.z + Math.sin(t * 0.9 + p.phase * 1.3) * 0.14
+        );
       });
     }
 
@@ -302,6 +357,7 @@ function Set04TumorInjection({
       releasedRef.current.children.forEach((child, idx) => {
         const start = new THREE.Vector3(2.2, 0, 0.25);
         child.position.lerpVectors(start, releasedTargets[idx], rel);
+        child.position.y += Math.sin(t * 1.3 + idx) * 0.06 * rel;
       });
     }
   });
@@ -335,13 +391,13 @@ function Set04TumorInjection({
       )}
       {tumorGeos['Vessel_Branch'] && (
         <mesh
+          ref={vesselRef}
           geometry={tumorGeos['Vessel_Branch']}
           material={materials.vesselBranch}
           {...makePointerProps('vessel_branch', 'Vasculatura angiogénica tumoral', callbacks)}
         />
       )}
 
-      {/* Angled Syringe Injector aimed directly into tumor core */}
       <group position={[2.2, 0.0, 0.25]} rotation={[0, 0, -0.44]}>
         {syringeGeos['Syringe_Barrel'] && (
           <mesh
@@ -388,7 +444,6 @@ function Set04TumorInjection({
         </group>
       </group>
 
-      {/* Localized Nanogel Depot formed in situ inside tumor */}
       <group position={[2.2, 0, 0.25]}>
         <NanocelluloseScaffold
           scale={depotScale}
@@ -398,7 +453,6 @@ function Set04TumorInjection({
         />
       </group>
 
-      {/* Released AgNPs responding to Warburg acidity */}
       <group ref={releasedRef}>
         {releasedTargets.map((_, idx) => (
           <group key={idx} visible={localT > 0.24 && idx < visCount}>
@@ -428,7 +482,7 @@ function Set04TumorInjection({
 }
 
 /* --------------------------------------------------------------------------
- * SET 05: Nanogel–Tissue Interaction & Ligand Targeting (Base vs +Folate)
+ * SET 05: Tissue Interaction & FR-alpha Targeting (InstancedMesh Fluid Bilayer)
  * -------------------------------------------------------------------------- */
 function Set05TissueInteraction({
   localT,
@@ -444,6 +498,9 @@ function Set05TissueInteraction({
   callbacks: InteractionCallbacks;
 }) {
   const receptorGeos = useGlbGeometries(MODEL_PATHS.receptorFra);
+  const headsTopInstRef = useRef<THREE.InstancedMesh>(null);
+  const headsBotInstRef = useRef<THREE.InstancedMesh>(null);
+  const tailsInstRef = useRef<THREE.InstancedMesh>(null);
   const baseUnitRef = useRef<THREE.Group>(null);
   const folateUnitRef = useRef<THREE.Group>(null);
   const ringsRef = useRef<THREE.Group>(null);
@@ -458,12 +515,37 @@ function Set05TissueInteraction({
     return arr;
   }, []);
 
+  const dummy = useMemo(() => new THREE.Object3D(), []);
   const receptorXs = [-4.6, -2.8, -1.0, 1.0, 2.8, 4.6];
 
   useFrame(({ clock }) => {
     const t = clock.getElapsedTime();
     const baseApp = smoothstep(0.08, 0.9, localT) * 0.52;
     const folApp = smoothstep(0.05, 0.62, localT);
+
+    // Living fluid membrane wave across InstancedMesh bilayer
+    if (headsTopInstRef.current && headsBotInstRef.current && tailsInstRef.current) {
+      lipidPositions.forEach(([x, baseY, z], idx) => {
+        const waveY = baseY + Math.sin(x * 0.55 + t * 1.3) * 0.055;
+        dummy.rotation.set(0, 0, 0);
+        dummy.scale.setScalar(1);
+
+        dummy.position.set(x, waveY + 0.25, z);
+        dummy.updateMatrix();
+        headsTopInstRef.current!.setMatrixAt(idx, dummy.matrix);
+
+        dummy.position.set(x, waveY - 0.25, z);
+        dummy.updateMatrix();
+        headsBotInstRef.current!.setMatrixAt(idx, dummy.matrix);
+
+        dummy.position.set(x, waveY, z);
+        dummy.updateMatrix();
+        tailsInstRef.current!.setMatrixAt(idx, dummy.matrix);
+      });
+      headsTopInstRef.current.instanceMatrix.needsUpdate = true;
+      headsBotInstRef.current.instanceMatrix.needsUpdate = true;
+      tailsInstRef.current.instanceMatrix.needsUpdate = true;
+    }
 
     const baseX = ligandMode === 'base' ? 0 : -2.85;
     const folX = ligandMode === 'folate' ? 0 : 2.85;
@@ -496,35 +578,42 @@ function Set05TissueInteraction({
 
   return (
     <group position={[0, -0.8, 0]}>
+      {/* Instanced Double-Leaflet Phospholipid Bilayer (3 draw calls total) */}
       <group position={[0, -1.45, 0]}>
-        {lipidPositions.map(([x, y, z], idx) => (
-          <group key={idx} position={[x, y, z]}>
-            <mesh
-              position={[0, 0.25, 0]}
-              {...makePointerProps(
-                'lipid_bilayer',
-                'Bicapa fosfolipídica plasmática (Cabeza polar externa)',
-                callbacks
-              )}
-            >
-              <sphereGeometry args={[0.11, 10, 8]} />
-              <meshStandardMaterial color={EDITORIAL_COLORS.lipidHead} roughness={0.35} />
-            </mesh>
-            <mesh position={[0, -0.25, 0]}>
-              <sphereGeometry args={[0.11, 10, 8]} />
-              <meshStandardMaterial color={EDITORIAL_COLORS.lipidHeadBot} roughness={0.42} />
-            </mesh>
-            <mesh>
-              <cylinderGeometry args={[0.026, 0.026, 0.48, 6]} />
-              <meshStandardMaterial
-                color={EDITORIAL_COLORS.lipidTail}
-                roughness={0.65}
-                transparent
-                opacity={0.55}
-              />
-            </mesh>
-          </group>
-        ))}
+        <instancedMesh
+          ref={headsTopInstRef}
+          args={[undefined, undefined, lipidPositions.length]}
+          frustumCulled={false}
+          {...makePointerProps(
+            'lipid_bilayer',
+            'Bicapa fosfolipídica plasmática (Cabeza polar externa)',
+            callbacks
+          )}
+        >
+          <sphereGeometry args={[0.11, 10, 8]} />
+          <meshStandardMaterial color={EDITORIAL_COLORS.lipidHead} roughness={0.35} />
+        </instancedMesh>
+        <instancedMesh
+          ref={headsBotInstRef}
+          args={[undefined, undefined, lipidPositions.length]}
+          frustumCulled={false}
+        >
+          <sphereGeometry args={[0.11, 10, 8]} />
+          <meshStandardMaterial color={EDITORIAL_COLORS.lipidHeadBot} roughness={0.42} />
+        </instancedMesh>
+        <instancedMesh
+          ref={tailsInstRef}
+          args={[undefined, undefined, lipidPositions.length]}
+          frustumCulled={false}
+        >
+          <cylinderGeometry args={[0.026, 0.026, 0.48, 6]} />
+          <meshStandardMaterial
+            color={EDITORIAL_COLORS.lipidTail}
+            roughness={0.65}
+            transparent
+            opacity={0.55}
+          />
+        </instancedMesh>
       </group>
 
       {receptorXs.map((rx, idx) => (
@@ -610,7 +699,12 @@ function Set06EndocytosisEscape({
 
   const smoothedTRef = useRef(localT);
   const membraneGroupRef = useRef<THREE.Group>(null);
-  const lipidColsRef = useRef<THREE.Group>(null);
+  const headsTopInstRef = useRef<THREE.InstancedMesh>(null);
+  const headsBotInstRef = useRef<THREE.InstancedMesh>(null);
+  const tailsInstRef = useRef<THREE.InstancedMesh>(null);
+  const headTopMatRef = useRef<THREE.MeshStandardMaterial>(null);
+  const headBotMatRef = useRef<THREE.MeshStandardMaterial>(null);
+  const tailMatRef = useRef<THREE.MeshStandardMaterial>(null);
   const receptorDockRef = useRef<THREE.Group>(null);
   const neckFunnelRef = useRef<THREE.Mesh>(null);
   const cargoRef = useRef<THREE.Group>(null);
@@ -627,6 +721,43 @@ function Set06EndocytosisEscape({
   const rosRef = useRef<THREE.Group>(null);
   const escapeIonsRef = useRef<THREE.Group>(null);
 
+  const endoFullMat = useMemo(
+    () =>
+      attachFresnelRim(
+        new THREE.MeshPhysicalMaterial({
+          color: 0x3b82a6,
+          roughness: 0.22,
+          clearcoat: 0.42,
+          transparent: true,
+          opacity: 0.26,
+          depthWrite: false,
+        }),
+        0x7dd3fc,
+        2.1,
+        0.4
+      ),
+    []
+  );
+
+  const endoCutMat = useMemo(
+    () =>
+      attachFresnelRim(
+        new THREE.MeshPhysicalMaterial({
+          color: 0x3b82a6,
+          roughness: 0.22,
+          clearcoat: 0.42,
+          transparent: true,
+          opacity: 0.26,
+          side: THREE.DoubleSide,
+          depthWrite: false,
+        }),
+        0x7dd3fc,
+        2.1,
+        0.4
+      ),
+    []
+  );
+
   const lipidGrid = useMemo(() => {
     const arr: [number, number][] = [];
     for (let ix = -9; ix <= 9; ix++) {
@@ -637,11 +768,10 @@ function Set06EndocytosisEscape({
     return arr;
   }, []);
 
-  // 72 discrete endosomal phospholipids wrapping progressively from bottom pole (-1) to top (+1)
   const endoLipidNodes = useMemo(
     () =>
       Array.from({ length: 72 }, (_, i) => {
-        const y = -1 + (2 * (i + 0.5)) / 72; // ordered bottom-to-top!
+        const y = -1 + (2 * (i + 0.5)) / 72;
         const r = Math.sqrt(Math.max(0, 1 - y * y));
         const theta = Math.PI * (1 + Math.sqrt(5)) * i;
         const dir = new THREE.Vector3(Math.sin(theta) * r, y, Math.cos(theta) * r).normalize();
@@ -655,7 +785,6 @@ function Set06EndocytosisEscape({
     []
   );
 
-  // 10 progressive latitude shell bands from bottom pole up to top neck
   const bandSlices = useMemo(
     () =>
       Array.from({ length: 10 }, (_, i) => {
@@ -690,11 +819,17 @@ function Set06EndocytosisEscape({
     []
   );
 
+  const instDummy = useMemo(() => new THREE.Object3D(), []);
+  const instUp = useMemo(() => new THREE.Vector3(0, 1, 0), []);
+  const instNormal = useMemo(() => new THREE.Vector3(), []);
+  const instQuat = useMemo(() => new THREE.Quaternion(), []);
+  const instOffset = useMemo(() => new THREE.Vector3(), []);
+  const instCenter = useMemo(() => new THREE.Vector3(), []);
+
   useFrame(({ clock }, delta) => {
     const dt = Math.min(0.05, delta);
     const t = clock.getElapsedTime();
 
-    // Frame-rate independent smooth damping; snap when jumping sets or scrubbing far
     if (Math.abs(localT - smoothedTRef.current) > 0.28 || localT < 0.015) {
       smoothedTRef.current = localT;
     } else {
@@ -702,7 +837,6 @@ function Set06EndocytosisEscape({
     }
     const sT = smoothedTRef.current;
 
-    // Smooth quintic phase curves
     const adhereT = smootherstep(0.0, 0.14, sT);
     const wrapT = smootherstep(0.13, 0.38, sT);
     const scissionT = smootherstep(0.36, 0.5, sT);
@@ -712,7 +846,6 @@ function Set06EndocytosisEscape({
     const acidT = smootherstep(0.62, 0.8, sT);
     const escapeT = smootherstep(0.76, 0.98, sT);
 
-    // 1. Nanoparticle smooth vertical path: approach -> adhere -> wrap -> release into cytosol
     const vesicleY = 3.55 - adhereT * 0.73 - wrapT * 2.47 - releaseT * 0.5;
     if (cargoRef.current) {
       cargoRef.current.position.set(0, vesicleY, 0);
@@ -720,38 +853,55 @@ function Set06EndocytosisEscape({
       cargoRef.current.scale.setScalar(Math.max(0.3, coreScale));
     }
 
-    // 2. Tilted, gap-free Plasma Bilayer (Y = 1.95) curving smoothly then sealing flat
-    if (membraneGroupRef.current && lipidColsRef.current) {
+    // InstancedMesh Bilayer with analytical normal tilt & living peripheral wave
+    if (
+      membraneGroupRef.current &&
+      headsTopInstRef.current &&
+      headsBotInstRef.current &&
+      tailsInstRef.current
+    ) {
       membraneGroupRef.current.visible = memFadeT < 0.99;
       membraneGroupRef.current.position.y = memFadeT * 0.45;
       const memOpacity = 1 - memFadeT;
       const pitDepth = wrapT * 2.15 * (1 - scissionT);
-      const upVec = new THREE.Vector3(0, 1, 0);
-      const normalVec = new THREE.Vector3();
-      const quat = new THREE.Quaternion();
+
+      if (headTopMatRef.current) headTopMatRef.current.opacity = memOpacity;
+      if (headBotMatRef.current) headBotMatRef.current.opacity = memOpacity;
+      if (tailMatRef.current) tailMatRef.current.opacity = 0.5 * memOpacity;
 
       lipidGrid.forEach(([x, z], idx) => {
-        const col = lipidColsRef.current!.children[idx];
         const r2 = x * x + z * z;
         const expTerm = Math.exp(-r2 / 3.2);
         const well = expTerm * pitDepth;
-        // Analytical gradient of Gaussian well to tilt phospholipids smoothly along membrane curve
         const dwDx = ((-2 * x) / 3.2) * well;
         const dwDz = ((-2 * z) / 3.2) * well;
-        normalVec.set(-dwDx, 1, -dwDz).normalize();
-        quat.setFromUnitVectors(upVec, normalVec);
+        instNormal.set(-dwDx, 1, -dwDz).normalize();
+        instQuat.setFromUnitVectors(instUp, instNormal);
 
         const radialPull = expTerm * wrapT * (1 - scissionT) * 0.14;
-        col.position.set(x * (1 - radialPull), 1.95 - well, z * (1 - radialPull));
-        col.quaternion.copy(quat);
+        const fluidWave = Math.sin(x * 0.6 + t * 1.2) * 0.03 * (1 - expTerm);
+        instCenter.set(x * (1 - radialPull), 1.95 - well + fluidWave, z * (1 - radialPull));
 
-        const hTopMat = (col.children[0] as THREE.Mesh).material as THREE.MeshStandardMaterial;
-        const hBotMat = (col.children[1] as THREE.Mesh).material as THREE.MeshStandardMaterial;
-        const tailMat = (col.children[2] as THREE.Mesh).material as THREE.MeshStandardMaterial;
-        hTopMat.opacity = memOpacity;
-        hBotMat.opacity = memOpacity;
-        tailMat.opacity = 0.5 * memOpacity;
+        instDummy.quaternion.copy(instQuat);
+        instDummy.scale.setScalar(1);
+
+        instOffset.set(0, 0.22, 0).applyQuaternion(instQuat);
+        instDummy.position.copy(instCenter).add(instOffset);
+        instDummy.updateMatrix();
+        headsTopInstRef.current!.setMatrixAt(idx, instDummy.matrix);
+
+        instOffset.set(0, -0.22, 0).applyQuaternion(instQuat);
+        instDummy.position.copy(instCenter).add(instOffset);
+        instDummy.updateMatrix();
+        headsBotInstRef.current!.setMatrixAt(idx, instDummy.matrix);
+
+        instDummy.position.copy(instCenter);
+        instDummy.updateMatrix();
+        tailsInstRef.current!.setMatrixAt(idx, instDummy.matrix);
       });
+      headsTopInstRef.current.instanceMatrix.needsUpdate = true;
+      headsBotInstRef.current.instanceMatrix.needsUpdate = true;
+      tailsInstRef.current.instanceMatrix.needsUpdate = true;
     }
 
     if (receptorDockRef.current) {
@@ -760,7 +910,6 @@ function Set06EndocytosisEscape({
       receptorDockRef.current.scale.setScalar(0.72 * (1 - wrapT * 0.85));
     }
 
-    // 3. Membrane Neck Funnel & Horizontal Dynamin Collar strangling at Y = 1.48
     if (neckFunnelRef.current) {
       const showNeck = wrapT > 0.25 && memFadeT < 0.96;
       neckFunnelRef.current.visible = showNeck;
@@ -780,7 +929,6 @@ function Set06EndocytosisEscape({
       dynaminRef.current.scale.set(collarScale, dynFade, collarScale);
     }
 
-    // 4. Clathrin Basket nucleating beneath vesicle and smoothly uncoating after release
     if (clathrinRef.current) {
       const clAppear = smootherstep(0.14, 0.34, sT);
       const clFade = 1 - smootherstep(0.48, 0.58, sT);
@@ -789,8 +937,14 @@ function Set06EndocytosisEscape({
       clathrinRef.current.scale.setScalar((0.28 + clAppear * 0.58) * clFade);
     }
 
-    // 5. Continuous Single Endosome (Progressive Wrap -> Sealed Maturation -> Acidification -> Breach)
-    if (endoGroupRef.current && endoBandsRef.current && endoShellRef.current && endoShellCutRef.current && endoLipidsRef.current && pumpsGroupRef.current) {
+    if (
+      endoGroupRef.current &&
+      endoBandsRef.current &&
+      endoShellRef.current &&
+      endoShellCutRef.current &&
+      endoLipidsRef.current &&
+      pumpsGroupRef.current
+    ) {
       const endoAppear = smootherstep(0.13, 0.2, sT);
       endoGroupRef.current.visible = endoAppear > 0.01;
       endoGroupRef.current.position.set(0, vesicleY, 0);
@@ -802,7 +956,6 @@ function Set06EndocytosisEscape({
         .lerp(new THREE.Color(0xc2593f), acidT)
         .lerp(new THREE.Color(0xdc2626), escapeT * 0.72);
 
-      // Progressive wrapping bands during Stage B (0.13 -> 0.44), then transition to unified sealed cutaway shell
       const sealedT = smootherstep(0.38, 0.48, sT);
       endoBandsRef.current.visible = sealedT < 0.99;
       endoBandsRef.current.children.forEach((band, idx) => {
@@ -817,12 +970,13 @@ function Set06EndocytosisEscape({
       endoShellRef.current.visible = !xrayMode && sealedT > 0.02;
       endoShellCutRef.current.visible = xrayMode && sealedT > 0.02;
       const shellOpacity = 0.26 * sealedT * (1 - escapeT * 0.42);
-      (endoShellRef.current.material as THREE.MeshPhysicalMaterial).color.copy(endoCol);
-      (endoShellRef.current.material as THREE.MeshPhysicalMaterial).opacity = shellOpacity;
-      (endoShellCutRef.current.material as THREE.MeshPhysicalMaterial).color.copy(endoCol);
-      (endoShellCutRef.current.material as THREE.MeshPhysicalMaterial).opacity = shellOpacity;
+      const fullM = endoShellRef.current.material as THREE.MeshPhysicalMaterial;
+      const cutM = endoShellCutRef.current.material as THREE.MeshPhysicalMaterial;
+      fullM.color.copy(endoCol);
+      fullM.opacity = shellOpacity;
+      cutM.color.copy(endoCol);
+      cutM.opacity = shellOpacity;
 
-      // 72 discrete endosomal phospholipid heads: wrap bottom->top, then oxidize & open breach on escape
       endoLipidsRef.current.children.forEach((child, idx) => {
         const cfg = endoLipidNodes[idx];
         const lMesh = child as THREE.Mesh;
@@ -846,7 +1000,6 @@ function Set06EndocytosisEscape({
         lMesh.scale.setScalar(baseScale);
       });
 
-      // V-ATPase pumps scale in smoothly as endosome matures
       const pumpScale = smootherstep(0.52, 0.64, sT);
       pumpsGroupRef.current.visible = pumpScale > 0.02;
       pumpsGroupRef.current.scale.setScalar(pumpScale);
@@ -895,44 +1048,50 @@ function Set06EndocytosisEscape({
 
   return (
     <group>
-      {/* Tilted, Gap-Free Plasma Membrane Bilayer (Y = 1.95) */}
+      {/* Instanced Tilted, Gap-Free Plasma Membrane Bilayer (3 draw calls total) */}
       <group ref={membraneGroupRef}>
-        <group ref={lipidColsRef}>
-          {lipidGrid.map((_, i) => (
-            <group key={i}>
-              <mesh
-                position={[0, 0.22, 0]}
-                {...makePointerProps('lipid_bilayer', 'Bicapa plasmática (Hoja externa)', callbacks)}
-              >
-                <sphereGeometry args={[0.105, 8, 6]} />
-                <meshStandardMaterial
-                  color={EDITORIAL_COLORS.lipidHead}
-                  roughness={0.36}
-                  transparent
-                />
-              </mesh>
-              <mesh position={[0, -0.22, 0]}>
-                <sphereGeometry args={[0.105, 8, 6]} />
-                <meshStandardMaterial
-                  color={EDITORIAL_COLORS.lipidHeadBot}
-                  roughness={0.42}
-                  transparent
-                />
-              </mesh>
-              <mesh>
-                <cylinderGeometry args={[0.022, 0.022, 0.42, 5]} />
-                <meshStandardMaterial
-                  color={EDITORIAL_COLORS.lipidTail}
-                  roughness={0.65}
-                  transparent
-                  opacity={0.5}
-                />
-              </mesh>
-            </group>
-          ))}
-        </group>
+        <instancedMesh
+          ref={headsTopInstRef}
+          args={[undefined, undefined, lipidGrid.length]}
+          frustumCulled={false}
+          {...makePointerProps('lipid_bilayer', 'Bicapa plasmática (Hoja externa)', callbacks)}
+        >
+          <sphereGeometry args={[0.105, 8, 6]} />
+          <meshStandardMaterial
+            ref={headTopMatRef}
+            color={EDITORIAL_COLORS.lipidHead}
+            roughness={0.36}
+            transparent
+          />
+        </instancedMesh>
+        <instancedMesh
+          ref={headsBotInstRef}
+          args={[undefined, undefined, lipidGrid.length]}
+          frustumCulled={false}
+        >
+          <sphereGeometry args={[0.105, 8, 6]} />
+          <meshStandardMaterial
+            ref={headBotMatRef}
+            color={EDITORIAL_COLORS.lipidHeadBot}
+            roughness={0.42}
+            transparent
+          />
+        </instancedMesh>
+        <instancedMesh
+          ref={tailsInstRef}
+          args={[undefined, undefined, lipidGrid.length]}
+          frustumCulled={false}
+        >
+          <cylinderGeometry args={[0.022, 0.022, 0.42, 5]} />
+          <meshStandardMaterial
+            ref={tailMatRef}
+            color={EDITORIAL_COLORS.lipidTail}
+            roughness={0.65}
+            transparent
+            opacity={0.5}
+          />
+        </instancedMesh>
 
-        {/* Central Membrane Receptor FR-alpha docking site */}
         <group ref={receptorDockRef} position={[0, 1.95, 0]} scale={0.72}>
           {receptorGeos['Receptor_FR_Alpha'] && (
             <mesh
@@ -947,7 +1106,6 @@ function Set06EndocytosisEscape({
           )}
         </group>
 
-        {/* Translucent membrane neck strangled by Dynamin */}
         <mesh ref={neckFunnelRef} position={[0, 1.38, 0]}>
           <cylinderGeometry args={[0.82, 1.12, 0.98, 24, 1, true]} />
           <meshPhysicalMaterial
@@ -961,7 +1119,6 @@ function Set06EndocytosisEscape({
         </mesh>
       </group>
 
-      {/* Horizontal Dynamin Collar at Membrane Neck */}
       {clathrinGeos['Dynamin_Collar'] && (
         <mesh
           ref={dynaminRef}
@@ -975,7 +1132,6 @@ function Set06EndocytosisEscape({
         />
       )}
 
-      {/* Clathrin Polyhedral Basket */}
       <group ref={clathrinRef}>
         {clathrinGeos['Clathrin_Struts'] && (
           <mesh
@@ -989,7 +1145,6 @@ function Set06EndocytosisEscape({
         )}
       </group>
 
-      {/* AgNP + Rosemary Corona (+Folate if active) */}
       <group ref={cargoRef}>
         {coreGeos['AgNP_Core'] && (
           <mesh
@@ -1045,7 +1200,6 @@ function Set06EndocytosisEscape({
         </group>
       </group>
 
-      {/* Single Continuous Endosome: Progressive Wrapping -> Sealed Maturation -> Breach */}
       <group ref={endoGroupRef}>
         <group ref={endoBandsRef}>
           {bandSlices.map((b, i) => (
@@ -1076,21 +1230,15 @@ function Set06EndocytosisEscape({
 
         <mesh
           ref={endoShellRef}
+          material={endoFullMat}
           {...makePointerProps('vatpase', 'Endosoma sellado en citosol (pH 4.5)', callbacks)}
         >
           <sphereGeometry args={[1.0, 40, 28]} />
-          <meshPhysicalMaterial
-            color="#3b82a6"
-            roughness={0.22}
-            clearcoat={0.4}
-            transparent
-            opacity={0.26}
-            depthWrite={false}
-          />
         </mesh>
 
         <mesh
           ref={endoShellCutRef}
+          material={endoCutMat}
           {...makePointerProps(
             'endosome_escape',
             'Endosoma formándose / madurando en citosol (Corte 3/4 frontal)',
@@ -1098,18 +1246,8 @@ function Set06EndocytosisEscape({
           )}
         >
           <sphereGeometry args={[1.0, 40, 28, Math.PI * 1.08, Math.PI * 1.3, 0, Math.PI]} />
-          <meshPhysicalMaterial
-            color="#3b82a6"
-            roughness={0.22}
-            clearcoat={0.4}
-            transparent
-            opacity={0.26}
-            side={THREE.DoubleSide}
-            depthWrite={false}
-          />
         </mesh>
 
-        {/* 72 Discrete Endosomal Phospholipid Heads */}
         <group ref={endoLipidsRef}>
           {endoLipidNodes.map((_, idx) => (
             <mesh
@@ -1126,7 +1264,6 @@ function Set06EndocytosisEscape({
           ))}
         </group>
 
-        {/* 6 V-ATPase Proton Pumps */}
         <group ref={pumpsGroupRef}>
           {Array.from({ length: 6 }, (_, i) => {
             const ang = (i / 6) * Math.PI * 2;
@@ -1149,7 +1286,6 @@ function Set06EndocytosisEscape({
         </group>
       </group>
 
-      {/* Protons H+ */}
       <group ref={protonsRef} visible={localT > 0.56 && localT < 0.88}>
         {Array.from({ length: 18 }, (_, i) => (
           <mesh key={i}>
@@ -1159,7 +1295,6 @@ function Set06EndocytosisEscape({
         ))}
       </group>
 
-      {/* ROS Peroxidation Waves */}
       <group ref={rosRef}>
         {rosDirections.map((_, idx) => (
           <mesh
@@ -1181,7 +1316,6 @@ function Set06EndocytosisEscape({
         ))}
       </group>
 
-      {/* Escaping Cytosolic Ag+ Ions */}
       <group ref={escapeIonsRef}>
         {escapeDirs.map((_, idx) => (
           <mesh
@@ -1221,13 +1355,18 @@ function Set07MitochondrialStress({
 
   const cristaeMat = useMemo(
     () =>
-      new THREE.MeshPhysicalMaterial({
-        color: EDITORIAL_COLORS.mitoCristae,
-        roughness: 0.34,
-        transparent: true,
-        opacity: 0.5,
-        side: THREE.DoubleSide,
-      }),
+      attachFresnelRim(
+        new THREE.MeshPhysicalMaterial({
+          color: EDITORIAL_COLORS.mitoCristae,
+          roughness: 0.34,
+          transparent: true,
+          opacity: 0.52,
+          side: THREE.DoubleSide,
+        }),
+        0x7dd3fc,
+        2.3,
+        0.28
+      ),
     []
   );
   const dnaMat = useMemo(
@@ -1239,8 +1378,21 @@ function Set07MitochondrialStress({
       }),
     []
   );
+  const etcMat = useMemo(
+    () =>
+      new THREE.MeshStandardMaterial({
+        color: 0xd18f4d,
+        emissive: 0xd97706,
+        emissiveIntensity: 0.12,
+        roughness: 0.38,
+        metalness: 0.12,
+      }),
+    []
+  );
 
   const mitoGroupRef = useRef<THREE.Group>(null);
+  const cristaeMeshRef = useRef<THREE.Mesh>(null);
+  const etcMeshRef = useRef<THREE.Mesh>(null);
   const gshTripeptideRef = useRef<THREE.Group>(null);
   const agIonsRef = useRef<THREE.Group>(null);
   const agSBridgesRef = useRef<THREE.Group>(null);
@@ -1249,7 +1401,6 @@ function Set07MitochondrialStress({
   const rosBurstRef = useRef<THREE.Group>(null);
   const mtDnaRef = useRef<THREE.Mesh>(null);
 
-  // 14 explicit GSH tripeptides (Glu-Cys-Gly + golden -SH thiol sphere) inside mitochondrial matrix
   const gshNodes = useMemo(
     () =>
       Array.from({ length: 14 }, (_, i) => {
@@ -1261,7 +1412,6 @@ function Set07MitochondrialStress({
     []
   );
 
-  // 14 entering Ag+ cations converging directly onto each GSH -SH thiol sphere
   const agEntryOrigins = useMemo(
     () =>
       Array.from({ length: 14 }, (_, i) => {
@@ -1275,7 +1425,6 @@ function Set07MitochondrialStress({
     []
   );
 
-  // 5 outer thiol padlock shields
   const padlockPositions = useMemo<[number, number, number][]>(
     () => [
       [-4.2, 2.7, 1.1],
@@ -1287,7 +1436,6 @@ function Set07MitochondrialStress({
     []
   );
 
-  // 36 inner-cristae phospholipid heads oxidized by ROS
   const cristaeLipids = useMemo(
     () =>
       Array.from({ length: 36 }, (_, i) => {
@@ -1302,7 +1450,6 @@ function Set07MitochondrialStress({
     []
   );
 
-  // 8 ETC respiratory sources matching Mito_ETC_Complexes in build_blender_assets.py
   const etcSources = useMemo(
     () =>
       [-3.6, -2.3, -0.8, 0.6, 2.0, 3.4, -1.6, 1.4].map((ex, idx) => {
@@ -1322,28 +1469,37 @@ function Set07MitochondrialStress({
     const seqT = Math.min(1, localT * 1.85 + boost);
     const rosT = Math.min(1, Math.max(0, (localT - 0.24) * 1.45 + boost)) * (0.45 + rosRate * 0.55);
 
-    // Cristae oxidation & swelling + mtDNA oxidative shift
-    cristaeMat.color
-      .setHex(EDITORIAL_COLORS.mitoCristae)
-      .lerp(new THREE.Color(0xb84a58), rosT);
-    dnaMat.color
-      .setHex(EDITORIAL_COLORS.mitoDna)
-      .lerp(new THREE.Color(0xdc2626), rosT);
+    if (cristaeMeshRef.current) {
+      (cristaeMeshRef.current.material as THREE.MeshPhysicalMaterial).color
+        .setHex(EDITORIAL_COLORS.mitoCristae)
+        .lerp(new THREE.Color(0xb84a58), rosT);
+    }
+    if (mtDnaRef.current) {
+      (mtDnaRef.current.material as THREE.MeshStandardMaterial).color
+        .setHex(EDITORIAL_COLORS.mitoDna)
+        .lerp(new THREE.Color(0xdc2626), rosT);
+      mtDnaRef.current.rotation.y = t * 0.12;
+    }
+    if (etcMeshRef.current) {
+      (etcMeshRef.current.material as THREE.MeshStandardMaterial).emissiveIntensity =
+        0.12 + rosT * 0.48 * (0.6 + 0.4 * Math.sin(t * 4.5));
+    }
 
     if (mitoGroupRef.current) {
       const swell = 1 + rosT * 0.06;
       mitoGroupRef.current.scale.set(swell, swell, swell);
     }
 
-    if (mtDnaRef.current) {
-      mtDnaRef.current.rotation.y = t * 0.12;
-    }
-
-    // Converging Ag+ ions -> bind directly to GSH -SH thiol sphere (0.28 offset)
     const visAg = Math.round(agEntryOrigins.length * agConcentration);
     if (agIonsRef.current && gshTripeptideRef.current && agSBridgesRef.current) {
       gshNodes.forEach((gPos, idx) => {
-        const thiolPos = new THREE.Vector3(gPos.x + 0.22, gPos.y + 0.08, gPos.z + 0.06);
+        const gshGrp = gshTripeptideRef.current!.children[idx];
+        // Subtle Brownian thermal oscillation on each GSH tripeptide
+        const bX = Math.sin(t * 1.6 + idx * 1.3) * 0.035;
+        const bY = Math.cos(t * 1.4 + idx * 1.9) * 0.035;
+        gshGrp.position.set(gPos.x + bX, gPos.y + bY, gPos.z);
+
+        const thiolPos = new THREE.Vector3(gPos.x + bX + 0.22, gPos.y + bY + 0.08, gPos.z + 0.06);
         const boundPos = new THREE.Vector3(thiolPos.x + 0.26, thiolPos.y + 0.06, thiolPos.z + 0.06);
         const isVis = idx < visAg;
         const agMesh = agIonsRef.current!.children[idx] as THREE.Mesh;
@@ -1353,21 +1509,17 @@ function Set07MitochondrialStress({
         }
 
         const isBound = isVis && seqT > 0.72;
-        const gshGrp = gshTripeptideRef.current!.children[idx];
-        // Turn GSH tripeptide lobes slate-gray when sequestered into Ag-SG
         for (let k = 0; k < 3; k++) {
           const lobe = gshGrp.children[k] as THREE.Mesh;
           (lobe.material as THREE.MeshStandardMaterial).color.setHex(
             isBound ? EDITORIAL_COLORS.gshBlocked : EDITORIAL_COLORS.gshShield
           );
         }
-        // Golden -SH sulfur dims when locked into Ag-S
         const thiolSphere = gshGrp.children[3] as THREE.Mesh;
         (thiolSphere.material as THREE.MeshStandardMaterial).color.setHex(
           isBound ? 0x94a3b8 : EDITORIAL_COLORS.folateHead
         );
 
-        // Visible Ag-S covalent sequestration bridge rod
         const bridge = agSBridgesRef.current!.children[idx] as THREE.Mesh;
         bridge.visible = isBound;
         if (isBound) {
@@ -1376,11 +1528,12 @@ function Set07MitochondrialStress({
             new THREE.Vector3(0, 1, 0),
             boundPos.clone().sub(thiolPos).normalize()
           );
+          const brMat = bridge.material as THREE.MeshStandardMaterial;
+          brMat.emissiveIntensity = 0.25 + 0.35 * Math.sin(t * 4.0 + idx);
         }
       });
     }
 
-    // Outer GSH padlock shields unlock and turn slate-gray
     if (padlocksRef.current) {
       padlocksRef.current.children.forEach((grp, idx) => {
         grp.position.y = padlockPositions[idx][1] + Math.sin(t * 1.1 + idx) * 0.08;
@@ -1394,7 +1547,6 @@ function Set07MitochondrialStress({
       });
     }
 
-    // Inner-cristae phospholipids oxidize from cyan to orange-red with thermal jitter
     if (cristaeLipidsRef.current) {
       cristaeLipidsRef.current.children.forEach((child, idx) => {
         const mesh = child as THREE.Mesh;
@@ -1411,7 +1563,6 @@ function Set07MitochondrialStress({
       });
     }
 
-    // ROS radicals erupting directly from ETC respiratory complexes
     if (rosBurstRef.current) {
       const activeCount = Math.round(36 * Math.min(1, 0.14 + rosT * 0.86));
       rosBurstRef.current.children.forEach((child, idx) => {
@@ -1447,6 +1598,7 @@ function Set07MitochondrialStress({
         )}
         {mitoGeos['Mito_Cristae_Inner'] && (
           <mesh
+            ref={cristaeMeshRef}
             geometry={mitoGeos['Mito_Cristae_Inner']}
             material={cristaeMat}
             {...makePointerProps(
@@ -1458,8 +1610,9 @@ function Set07MitochondrialStress({
         )}
         {mitoGeos['Mito_ETC_Complexes'] && (
           <mesh
+            ref={etcMeshRef}
             geometry={mitoGeos['Mito_ETC_Complexes']}
-            material={materials.mitoEtc}
+            material={etcMat}
             {...makePointerProps(
               'etc_complex',
               'Complejos ETC (Fuga electrónica → Generación de ROS)',
@@ -1477,7 +1630,6 @@ function Set07MitochondrialStress({
         )}
       </group>
 
-      {/* 14 Explicit GSH Tripeptides (Glu-Cys-Gly + Golden -SH Active Thiol) */}
       <group ref={gshTripeptideRef}>
         {gshNodes.map((pos, idx) => (
           <group key={idx} position={[pos.x, pos.y, pos.z]}>
@@ -1510,7 +1662,6 @@ function Set07MitochondrialStress({
         ))}
       </group>
 
-      {/* Entering Ag+ Cations */}
       <group ref={agIonsRef}>
         {agEntryOrigins.map((_, idx) => (
           <mesh
@@ -1523,7 +1674,6 @@ function Set07MitochondrialStress({
         ))}
       </group>
 
-      {/* Ag-S Covalent Sequestration Bridges */}
       <group ref={agSBridgesRef}>
         {gshNodes.map((_, idx) => (
           <mesh
@@ -1532,12 +1682,17 @@ function Set07MitochondrialStress({
             {...makePointerProps('gsh', 'Complejo bloqueado Ag–SG (Escudo inactivado)', callbacks)}
           >
             <cylinderGeometry args={[0.036, 0.036, 0.26, 8]} />
-            <meshStandardMaterial color="#e2e8f0" roughness={0.3} metalness={0.7} />
+            <meshStandardMaterial
+              color="#e2e8f0"
+              emissive="#38bdf8"
+              emissiveIntensity={0.25}
+              roughness={0.3}
+              metalness={0.7}
+            />
           </mesh>
         ))}
       </group>
 
-      {/* 5 Outer GSH Thiol Padlock Shields */}
       <group ref={padlocksRef}>
         {padlockPositions.map((pos, idx) => (
           <group key={idx} position={pos}>
@@ -1567,7 +1722,6 @@ function Set07MitochondrialStress({
         ))}
       </group>
 
-      {/* 36 Inner Cristae Phospholipids Oxidized by ROS */}
       <group ref={cristaeLipidsRef}>
         {cristaeLipids.map((pos, idx) => (
           <mesh
@@ -1585,7 +1739,6 @@ function Set07MitochondrialStress({
         ))}
       </group>
 
-      {/* 36 Fiery ROS Radicals Erupting from ETC Complexes */}
       <group ref={rosBurstRef}>
         {Array.from({ length: 36 }, (_, idx) => (
           <mesh
@@ -1626,13 +1779,25 @@ function Set08Apoptosis({
 }) {
   const apopGeos = useGlbGeometries(MODEL_PATHS.apoptosomeCell);
 
+  const poreMat = useMemo(
+    () =>
+      new THREE.MeshStandardMaterial({
+        color: EDITORIAL_COLORS.apoptosome,
+        emissive: 0xa855f7,
+        emissiveIntensity: 0.25,
+        roughness: 0.3,
+        metalness: 0.18,
+      }),
+    []
+  );
+
   const cellGroupRef = useRef<THREE.Group>(null);
+  const poreMeshRef = useRef<THREE.Mesh>(null);
   const cytStreamRef = useRef<THREE.Group>(null);
   const wheelARef = useRef<THREE.Mesh>(null);
   const wheelBRef = useRef<THREE.Mesh>(null);
   const bodiesRef = useRef<THREE.Group>(null);
 
-  // Start Cytochrome c stream right at the tangent BAX/BAK pore opening
   const cytTargets = useMemo(
     () =>
       Array.from({ length: 18 }, (_, i) => ({
@@ -1657,6 +1822,11 @@ function Set08Apoptosis({
   useFrame(({ clock }) => {
     const t = clock.getElapsedTime();
     const apopT = smoothstep(0.05, 0.95, localT);
+
+    if (poreMeshRef.current) {
+      (poreMeshRef.current.material as THREE.MeshStandardMaterial).emissiveIntensity =
+        0.2 + 0.25 * Math.sin(t * 3.2);
+    }
 
     if (cellGroupRef.current) {
       const shrink = 1 - apopT * 0.14;
@@ -1708,7 +1878,6 @@ function Set08Apoptosis({
         )}
       </group>
 
-      {/* Collapsed mitochondrion with true outer-membrane rupture & tangent BAX/BAK pore */}
       <group position={[-2.6, -1.0, 0]} rotation={[0, 0, 0.12]}>
         {apopGeos['Collapsed_Mito_Outer'] && (
           <mesh
@@ -1726,8 +1895,9 @@ function Set08Apoptosis({
         )}
         {apopGeos['Collapsed_Mito_Pore'] && (
           <mesh
+            ref={poreMeshRef}
             geometry={apopGeos['Collapsed_Mito_Pore']}
-            material={materials.apoptosome}
+            material={poreMat}
             {...makePointerProps(
               'cytc',
               'Poro BAX/BAK / mPTP tangente a la membrana externa (Salida de Citocromo c)',
