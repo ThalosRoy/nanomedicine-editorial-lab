@@ -49,6 +49,9 @@ export interface EditorialMaterialSet {
   mitoOuter: THREE.MeshPhysicalMaterial;
   mitoCristae: THREE.MeshPhysicalMaterial;
   mitoDna: THREE.MeshStandardMaterial;
+  mitoEtc: THREE.MeshStandardMaterial;
+  syringeGlass: THREE.MeshPhysicalMaterial;
+  syringePlunger: THREE.MeshStandardMaterial;
   apoptoticCell: THREE.MeshPhysicalMaterial;
   apoptosome: THREE.MeshStandardMaterial;
 }
@@ -156,6 +159,24 @@ export function createEditorialMaterials(): EditorialMaterialSet {
       color: EDITORIAL_COLORS.mitoDna,
       roughness: 0.38,
       metalness: 0.08,
+    }),
+    mitoEtc: new THREE.MeshStandardMaterial({
+      color: 0xd18f4d,
+      roughness: 0.38,
+      metalness: 0.12,
+    }),
+    syringeGlass: new THREE.MeshPhysicalMaterial({
+      color: 0xdbeafe,
+      roughness: 0.12,
+      clearcoat: 0.65,
+      transparent: true,
+      opacity: 0.34,
+      depthWrite: false,
+    }),
+    syringePlunger: new THREE.MeshStandardMaterial({
+      color: 0x4fb3bf,
+      roughness: 0.34,
+      metalness: 0.25,
     }),
     apoptoticCell: new THREE.MeshPhysicalMaterial({
       color: EDITORIAL_COLORS.apoptoticCell,

@@ -391,48 +391,9 @@ export function ObsidianHud(props: ObsidianHudProps) {
           {molInfo.title}
         </h2>
 
-        <div
-          className="font-mono-tech"
-          style={{
-            fontSize: '0.66rem',
-            color: '#a0ced8',
-            background: '#07090e',
-            border: '1px solid rgba(148, 163, 184, 0.16)',
-            borderRadius: '0.5rem',
-            padding: '0.4rem 0.55rem',
-          }}
-        >
-          {molInfo.formula}
-        </div>
-
-        <p style={{ margin: 0, fontSize: '0.73rem', color: '#cbd5e1', lineHeight: 1.48 }}>
+        <p style={{ margin: 0, fontSize: '0.73rem', color: '#cbd5e1', lineHeight: 1.52 }}>
           {molInfo.desc}
         </p>
-
-        <div
-          style={{
-            background: 'rgba(7, 9, 14, 0.72)',
-            border: '1px solid rgba(148, 163, 184, 0.15)',
-            borderRadius: '0.55rem',
-            padding: '0.55rem',
-          }}
-        >
-          <div
-            className="font-mono-tech"
-            style={{
-              fontSize: '0.6rem',
-              textTransform: 'uppercase',
-              letterSpacing: '0.08em',
-              color: '#f6bc72',
-              marginBottom: '0.2rem',
-            }}
-          >
-            Función en el Modelo
-          </div>
-          <p style={{ margin: 0, fontSize: '0.72rem', color: '#e2e8f0', lineHeight: 1.4 }}>
-            {molInfo.impact}
-          </p>
-        </div>
 
         <div
           className="font-mono-tech"

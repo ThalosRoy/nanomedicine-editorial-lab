@@ -14,6 +14,7 @@ export const MODEL_PATHS = {
   clathrinCage: './models/clathrin_cage.glb',
   mitochondrion: './models/mitochondrion_editorial.glb',
   apoptosomeCell: './models/apoptosome_cell.glb',
+  syringeInjector: './models/syringe_injector.glb',
 } as const;
 
 Object.values(MODEL_PATHS).forEach((path) => {

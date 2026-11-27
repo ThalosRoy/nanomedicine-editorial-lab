@@ -188,7 +188,7 @@ def save_and_export(asset_name: str) -> None:
 def build_agnp_core() -> None:
     clear_scene()
     bm = bmesh.new()
-    bmesh.ops.create_icosphere(bm, subdivisions=3, radius=1.0)
+    bmesh.ops.create_icosphere(bm, subdivisions=4, radius=1.0)
     for v in bm.verts:
         n = v.co.normalized()
         facet = 1.0 + 0.014 * math.sin(n.x * 9.0) * math.cos(n.y * 9.0) * math.sin(n.z * 9.0)
@@ -518,7 +518,7 @@ def build_tumor_microenv() -> None:
         if math.hypot(cx - 2.4, cy) < 1.85 and cz > -0.5:
             continue
         sub_bm = bmesh.new()
-        bmesh.ops.create_icosphere(sub_bm, subdivisions=2, radius=0.72 + (i % 3) * 0.10)
+        bmesh.ops.create_icosphere(sub_bm, subdivisions=3, radius=0.72 + (i % 3) * 0.10)
         for v in sub_bm.verts:
             n = v.co.normalized()
             bump = 1.0 + 0.11 * math.sin(n.x * 6.0 + i) * math.cos(n.y * 6.0) + 0.06 * math.sin(n.z * 9.0)
@@ -559,7 +559,7 @@ def build_tumor_microenv() -> None:
         for iy in range(4):
             for iz in range(2):
                 center = t3(-6.8 + ix * 1.38, -2.1 + iy * 1.40, -0.7 + iz * 1.38)
-                add_sphere_to_bmesh(bm_healthy, center, 0.62, subdivisions=2, scale=Vector((1.0, 0.94, 0.90)))
+                add_sphere_to_bmesh(bm_healthy, center, 0.62, subdivisions=3, scale=Vector((1.0, 0.94, 0.90)))
     create_object_from_bmesh("Healthy_Epithelium", bm_healthy, mat_healthy, smooth=True)
 
     save_and_export("tumor_microenv")
@@ -736,7 +736,88 @@ def build_mitochondrion_editorial() -> None:
     add_tube_segment(bm_dna, pts_b, 0.042, 0.042, segments=6, cap_ends=False)
     create_object_from_bmesh("Mito_MtDNA_Helix", bm_dna, mat_mtdna, smooth=True)
 
+    # Transmembrane ETC respiratory chain complexes (I-IV) embedded along cristae folds
+    mat_etc = make_pbr_material(
+        "MAT_Mito_ETC",
+        (0.82, 0.56, 0.30, 1.0),
+        metallic=0.10,
+        roughness=0.38,
+    )
+    bm_etc = bmesh.new()
+    etc_x = [-3.6, -2.3, -0.8, 0.6, 2.0, 3.4, -1.6, 1.4]
+    for idx, ex in enumerate(etc_x):
+        ang = (idx * 1.25) - 0.8
+        ey = math.sin(ang) * 1.35 + math.sin(ex * 0.25) * 0.26
+        ez = math.cos(ang) * 0.95
+        add_tube_segment(
+            bm_etc,
+            [t3(ex, ey - 0.22, ez * 0.85), t3(ex, ey + 0.22, ez * 1.05)],
+            0.16,
+            0.20,
+            segments=8,
+            cap_ends=True,
+        )
+        add_sphere_to_bmesh(bm_etc, t3(ex, ey + 0.24, ez * 1.05), 0.22, subdivisions=2)
+    create_object_from_bmesh("Mito_ETC_Complexes", bm_etc, mat_etc, smooth=True)
+
     save_and_export("mitochondrion_editorial")
+
+
+# ---------------------------------------------------------------------------
+# 10. Syringe Injector (Barrel + Sliding Plunger + Metallic Cannula)
+# ---------------------------------------------------------------------------
+def build_syringe_injector() -> None:
+    clear_scene()
+    mat_barrel = make_pbr_material(
+        "MAT_Syringe_Barrel",
+        (0.84, 0.93, 0.98, 1.0),
+        metallic=0.04,
+        roughness=0.14,
+        coat=0.6,
+        alpha=0.36,
+    )
+    mat_plunger = make_pbr_material(
+        "MAT_Syringe_Plunger",
+        (0.31, 0.70, 0.75, 1.0),
+        metallic=0.22,
+        roughness=0.35,
+    )
+    mat_needle = make_pbr_material(
+        "MAT_Syringe_Needle",
+        (0.88, 0.91, 0.94, 1.0),
+        metallic=0.86,
+        roughness=0.22,
+    )
+
+    bm_barrel = bmesh.new()
+    # Main glass barrel + luer tip + finger flange
+    add_tube_segment(
+        bm_barrel,
+        [t3(0, 3.25, 0), t3(0, 3.65, 0), t3(0, 7.65, 0)],
+        0.22,
+        0.64,
+        segments=24,
+        cap_ends=True,
+    )
+    # Uniform outer body override via clean cylinder segments
+    bm_barrel.clear()
+    add_tube_segment(bm_barrel, [t3(0, 3.20, 0), t3(0, 3.65, 0)], 0.20, 0.34, segments=20, cap_ends=True)
+    add_tube_segment(bm_barrel, [t3(0, 3.65, 0), t3(0, 7.55, 0)], 0.62, 0.62, segments=28, cap_ends=True)
+    add_tube_segment(bm_barrel, [t3(0, 7.55, 0), t3(0, 7.72, 0)], 0.92, 0.92, segments=28, cap_ends=True)
+    create_object_from_bmesh("Syringe_Barrel", bm_barrel, mat_barrel, smooth=True)
+
+    bm_plunger = bmesh.new()
+    # Stopper + rod + thumb cap (shifted downward during injection animation)
+    add_tube_segment(bm_plunger, [t3(0, 5.15, 0), t3(0, 5.70, 0)], 0.51, 0.51, segments=24, cap_ends=True)
+    add_tube_segment(bm_plunger, [t3(0, 5.70, 0), t3(0, 8.85, 0)], 0.16, 0.16, segments=14, cap_ends=True)
+    add_tube_segment(bm_plunger, [t3(0, 8.85, 0), t3(0, 9.02, 0)], 0.68, 0.68, segments=24, cap_ends=True)
+    create_object_from_bmesh("Syringe_Plunger", bm_plunger, mat_plunger, smooth=True)
+
+    bm_needle = bmesh.new()
+    add_tube_segment(bm_needle, [t3(0, 0.15, 0), t3(0, 3.25, 0)], 0.08, 0.14, segments=18, cap_ends=True)
+    create_object_from_bmesh("Syringe_Needle", bm_needle, mat_needle, smooth=True)
+
+    save_and_export("syringe_injector")
 
 
 # ---------------------------------------------------------------------------
@@ -811,7 +892,8 @@ def main() -> None:
     build_clathrin_cage()
     build_mitochondrion_editorial()
     build_apoptosome_cell()
-    print("[DONE] All 9 unified Scientific Editorial assets rebuilt in Y-up coordinates.")
+    build_syringe_injector()
+    print("[DONE] All 10 unified Scientific Editorial assets rebuilt in Y-up coordinates.")
 
 
 if __name__ == "__main__":

@@ -78,13 +78,13 @@ NanoRender0.1/
 
 1. **Set 00 — Scientific Editorial Environment:** Iluminación de estudio, cámara, escala y exhibición calibrada de las 5 familias de materiales unificadas.
 2. **Set 01 — Polymer Matrix Architecture:** Matriz porosa de **Nanocelulosa** (red fibrilar continua entrelazada con envoltura de hidrogel en corte 3/4, sin ligandos en su exterior).
-3. **Set 02 — Silver Nanoparticles (AgNPs):** Núcleos metálicos de plata (`Ag⁰`) micro-facetados con acabado satinado editorial y diferenciación frente a iones `Ag⁺`.
-4. **Set 03 — Rosemary Phytochemical Corona:** Recubrimiento molecular fitoquímico (*Rosmarinus officinalis*) en cepillo con puntas activas y corte 3/4 (+ variante de funcionalización con Ácido Fólico en las AgNPs).
-5. **Set 04 — Embedded Nanogel System *(Modelo Protagonista)*:** AgNPs con corona fitoquímica (y variante `+Folato` únicamente en las AgNPs internas) embebidas en las cavidades porosas del nanogel de nanocelulosa.
-6. **Set 05 — Tumor Tissue Microenvironment:** Esferoide tumoral heterogéneo con vasculatura angiogénica, matriz extracelular y acidez tumoral (Efecto Warburg, pH 6.2–6.8 vs. tejido sano pH 7.4).
-7. **Set 06 — Nanogel–Tissue Interaction & Ligand Targeting *(Mecanismo Propuesto)*:** Depósito local en intersticio tumoral y comparativa de acoplamiento en bicapa lipídica hacia receptores triméricos **FR-α** (Base vs. `+Folato`).
-8. **Set 07 — Endocytosis & Endosomal Escape *(Mecanismo Propuesto)*:** Endocitosis mediada por **Clatrina (CME)** y **Dinamina**; acidificación por bombas **V-ATPasa** (pH ~4.5), desprendimiento de la corona, disolución oxidativa (`Ag⁰ → Ag⁺`), peroxidación lipídica y escape al citosol.
-9. **Set 08 — Mitochondrial Oxidative Stress & Apoptosis *(Mecanismo Propuesto)*:** Bloqueo de **Glutatión (GSH)** por `Ag⁺`, ráfaga de **ROS**, caída de `ΔΨm` en mitocondria con crestas y ADNmt, liberación de **Citocromo c** y activación de **Caspasa 9 → Caspasa 3**.
+3. **Set 02 — Rosemary Phytochemical Corona:** Núcleo de plata (`Ag⁰`) con recubrimiento molecular fitoquímico (*Rosmarinus officinalis*) en cepillo con puntas activas y corte 3/4 (+ variante de funcionalización con Ácido Fólico en las AgNPs).
+4. **Set 03 — Embedded Nanogel System *(Modelo Protagonista)*:** AgNPs con corona fitoquímica (y variante `+Folato` únicamente en las AgNPs internas) embebidas en las cavidades porosas del nanogel de nanocelulosa.
+5. **Set 04 — Local Injection & Tumor Microenvironment:** Jeringa de administración pseudoplástica, depósito *in situ* en esferoide tumoral heterogéneo con vasculatura angiogénica y acidez tumoral (Efecto Warburg, pH 6.2–6.8 vs. tejido sano pH 7.4).
+6. **Set 05 — Nanogel–Tissue Interaction & Ligand Targeting *(Mecanismo Propuesto)*:** Comparativa de acoplamiento en bicapa lipídica hacia receptores triméricos **FR-α** (Base vs. `+Folato`).
+7. **Set 06 — Endocytosis & Endosomal Escape *(Mecanismo Propuesto)*:** Endocitosis mediada por **Clatrina (CME)** y **Dinamina** en el plano de membrana; acidificación por bombas **V-ATPasa** (pH ~4.5), disolución oxidativa (`Ag⁰ → Ag⁺`), peroxidación lipídica y escape al citosol.
+8. **Set 07 — Intracristal Mitochondrial Oxidative Stress & GSH Sequestration *(Mecanismo Propuesto)*:** Vista explícita al interior mitocondrial: secuestro de grupos tiol (`–SH`) del **Glutatión (GSH)** por `Ag⁺` (enlaces `Ag–S`), ráfaga de **ROS** desde complejos **ETC** en las crestas, peroxidación lipídica y daño al ADNmt.
+9. **Set 08 — Mitochondrial Collapse & Apoptosis *(Mecanismo Propuesto)*:** Pérdida de `ΔΨm`, liberación de **Citocromo c** vía poro mPTP y activación de **Caspasa 9 → Caspasa 3** con cuerpos apoptóticos.
 
 ---
 

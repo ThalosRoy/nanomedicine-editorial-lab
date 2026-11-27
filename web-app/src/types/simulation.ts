@@ -9,6 +9,7 @@ export type MoleculeId =
   | 'rosemary_corona'
   | 'folate_np'
   | 'base_np'
+  | 'syringe_gel'
   | 'healthy_tissue'
   | 'warburg_tumor'
   | 'vessel_branch'
@@ -19,6 +20,7 @@ export type MoleculeId =
   | 'endosome_escape'
   | 'ag_ion'
   | 'gsh'
+  | 'etc_complex'
   | 'ros'
   | 'mito_cristae'
   | 'cytc'
@@ -28,9 +30,7 @@ export interface MoleculeInfo {
   id: MoleculeId;
   tag: string;
   title: string;
-  formula: string;
   desc: string;
-  impact: string;
   accentColor: string;
 }
 

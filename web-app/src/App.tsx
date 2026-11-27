@@ -87,7 +87,7 @@ export function App() {
     (setId: SetId) => {
       setProgress(setId * SET_SPAN + SET_SPAN * 0.12);
       setSelectedMolOverride(null);
-      if (setId === 6 && ligandMode === 'base') {
+      if (setId === 5 && ligandMode === 'base') {
         setLigandMode('compare');
       }
     },

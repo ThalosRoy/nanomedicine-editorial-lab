@@ -83,7 +83,6 @@ function Set00EditorialEnvironment({
         />
       </mesh>
 
-      {/* 1. Nanocellulose Matrix (no exterior folate) */}
       <group position={[-4.5, 0.1, 0]}>
         <NanocelluloseScaffold
           scale={0.38}
@@ -93,7 +92,6 @@ function Set00EditorialEnvironment({
         />
       </group>
 
-      {/* 2. Silver Core + 3. Rosemary Corona + Folate on AgNP */}
       <EditorialAgNPUnit
         position={[-1.5, 0.1, 1.2]}
         scale={0.82}
@@ -103,7 +101,6 @@ function Set00EditorialEnvironment({
         callbacks={callbacks}
       />
 
-      {/* 4. Receptor FR-alpha + Membrane Family */}
       <group position={[1.6, -0.3, 1.1]} scale={1.45}>
         {receptorGeos['Receptor_FR_Alpha'] && (
           <mesh
@@ -114,7 +111,6 @@ function Set00EditorialEnvironment({
         )}
       </group>
 
-      {/* 5. Mitochondrion Cutaway Organelle facing front camera */}
       <group position={[4.5, 0.1, -0.4]} scale={0.26}>
         {mitoGeos['Mito_Outer_Cutaway'] && (
           <mesh
@@ -135,7 +131,7 @@ function Set00EditorialEnvironment({
 }
 
 /* --------------------------------------------------------------------------
- * SET 01: Polymer Matrix Architecture (Pure Nanocellulose — No Exterior Folate)
+ * SET 01: Polymer Matrix Architecture (Pure Nanocellulose)
  * -------------------------------------------------------------------------- */
 function Set01PolymerMatrix({
   xrayMode,
@@ -157,84 +153,9 @@ function Set01PolymerMatrix({
 }
 
 /* --------------------------------------------------------------------------
- * SET 02: Silver Nanoparticles (Ag0 Satin Core + Ag+ Ion Orbit)
+ * SET 02: AgNP + Rosemary Phytochemical Corona (+Optional Folate on AgNP)
  * -------------------------------------------------------------------------- */
-function Set02SilverNanoparticles({
-  agConcentration,
-  materials,
-  callbacks,
-}: {
-  agConcentration: number;
-  materials: EditorialMaterialSet;
-  callbacks: InteractionCallbacks;
-}) {
-  const coreGeos = useGlbGeometries(MODEL_PATHS.agnpCore);
-  const ionsRef = useRef<THREE.Group>(null);
-
-  const ionOffsets = useMemo(
-    () =>
-      Array.from({ length: 14 }, (_, i) => ({
-        angle: (i / 14) * Math.PI * 2,
-        tilt: ((i % 5) - 2) * 0.35,
-        radius: 2.35 + (i % 3) * 0.32,
-        speed: 0.25 + (i % 4) * 0.08,
-      })),
-    []
-  );
-
-  useFrame(({ clock }) => {
-    const t = clock.getElapsedTime();
-    if (ionsRef.current) {
-      ionsRef.current.children.forEach((child, idx) => {
-        const cfg = ionOffsets[idx];
-        const a = cfg.angle + t * cfg.speed;
-        child.position.set(
-          Math.cos(a) * cfg.radius,
-          Math.sin(a * 1.3 + idx) * cfg.tilt * 1.4,
-          Math.sin(a) * cfg.radius
-        );
-      });
-    }
-  });
-
-  const visibleIons = Math.max(4, Math.round(ionOffsets.length * agConcentration));
-
-  return (
-    <group>
-      {coreGeos['AgNP_Core'] && (
-        <mesh
-          geometry={coreGeos['AgNP_Core']}
-          material={materials.silverSatin}
-          scale={1.55}
-          castShadow
-          receiveShadow
-          {...makePointerProps(
-            'ag0_core',
-            'Núcleo metálico de plata Ag⁰ (~17.5 nm · Micro-facetado satinado)',
-            callbacks
-          )}
-        />
-      )}
-      <group ref={ionsRef}>
-        {ionOffsets.map((_, idx) => (
-          <mesh
-            key={idx}
-            visible={idx < visibleIons}
-            material={materials.silverSatin}
-            {...makePointerProps('ag_ion', 'Iones de plata Ag⁺ (Referencia iónica)', callbacks)}
-          >
-            <sphereGeometry args={[0.11, 14, 12]} />
-          </mesh>
-        ))}
-      </group>
-    </group>
-  );
-}
-
-/* --------------------------------------------------------------------------
- * SET 03: Rosemary Phytochemical Corona (+Optional Folate on AgNP)
- * -------------------------------------------------------------------------- */
-function Set03RosemaryCorona({
+function Set02RosemaryCorona({
   xrayMode,
   ligandMode,
   materials,
@@ -257,9 +178,9 @@ function Set03RosemaryCorona({
 }
 
 /* --------------------------------------------------------------------------
- * SET 04: Embedded Nanogel System (Folate ONLY on Internal AgNPs, Never Exterior)
+ * SET 03: Embedded Nanogel System (Protagonist — Folate ONLY on Internal AgNPs)
  * -------------------------------------------------------------------------- */
-function Set04EmbeddedNanogel({
+function Set03EmbeddedNanogel({
   xrayMode,
   ligandMode,
   agConcentration,
@@ -300,9 +221,9 @@ function Set04EmbeddedNanogel({
 }
 
 /* --------------------------------------------------------------------------
- * SET 05: Tumor Tissue Microenvironment (Warburg pH 6.2-6.8 vs Healthy 7.4)
+ * SET 04: Syringe Pseudoplastic Injection & Warburg Microenvironment
  * -------------------------------------------------------------------------- */
-function Set05TumorMicroenvironment({
+function Set04TumorInjection({
   localT,
   xrayMode,
   ligandMode,
@@ -318,6 +239,9 @@ function Set05TumorMicroenvironment({
   callbacks: InteractionCallbacks;
 }) {
   const tumorGeos = useGlbGeometries(MODEL_PATHS.tumorMicroenv);
+  const syringeGeos = useGlbGeometries(MODEL_PATHS.syringeInjector);
+  const plungerRef = useRef<THREE.Mesh>(null);
+  const dropsRef = useRef<THREE.Group>(null);
   const protonsRef = useRef<THREE.Group>(null);
   const releasedRef = useRef<THREE.Group>(null);
 
@@ -347,22 +271,37 @@ function Set05TumorMicroenvironment({
 
   useFrame(({ clock }) => {
     const t = clock.getElapsedTime();
+    const injectT = smoothstep(0.0, 0.55, localT);
+
+    if (plungerRef.current) {
+      plungerRef.current.position.y = -injectT * 1.75;
+    }
+
+    if (dropsRef.current) {
+      dropsRef.current.children.forEach((child, idx) => {
+        const cyc = (t * 1.15 + idx / 8) % 1;
+        child.visible = localT < 0.72;
+        child.position.set(0, 3.2 - cyc * 3.1, 0);
+      });
+    }
+
     if (protonsRef.current) {
       protonsRef.current.children.forEach((child, idx) => {
         const p = protons[idx];
         child.position.set(p.x, p.y + Math.sin(t * 1.4 + p.phase) * 0.22, p.z);
       });
     }
+
     if (releasedRef.current) {
-      const rel = smoothstep(0.2, 0.95, localT);
+      const rel = smoothstep(0.28, 0.96, localT);
       releasedRef.current.children.forEach((child, idx) => {
-        const start = new THREE.Vector3(2.2, 0, 0.2);
+        const start = new THREE.Vector3(2.2, 0, 0.25);
         child.position.lerpVectors(start, releasedTargets[idx], rel);
       });
     }
   });
 
-  const depotScale = 0.26 + smoothstep(0.05, 0.45, localT) * 0.16;
+  const depotScale = 0.20 + smoothstep(0.05, 0.55, localT) * 0.24;
   const visCount = Math.max(2, Math.round(releasedTargets.length * agConcentration));
 
   return (
@@ -393,16 +332,59 @@ function Set05TumorMicroenvironment({
         <mesh
           geometry={tumorGeos['Vessel_Branch']}
           material={materials.vesselBranch}
-          {...makePointerProps(
-            'vessel_branch',
-            'Vasculatura angiogénica tumoral',
-            callbacks
-          )}
+          {...makePointerProps('vessel_branch', 'Vasculatura angiogénica tumoral', callbacks)}
         />
       )}
 
-      {/* Localized Nanogel Depot (No exterior folate on nanocellulose) */}
-      <group position={[2.2, 0, 0.2]}>
+      {/* Angled Syringe Injector aimed directly into tumor core */}
+      <group position={[2.2, 0.0, 0.25]} rotation={[0, 0, -0.44]}>
+        {syringeGeos['Syringe_Barrel'] && (
+          <mesh
+            geometry={syringeGeos['Syringe_Barrel']}
+            material={materials.syringeGlass}
+            {...makePointerProps(
+              'syringe_gel',
+              'Jeringa de administración intratumoral',
+              callbacks
+            )}
+          />
+        )}
+        {syringeGeos['Syringe_Plunger'] && (
+          <mesh
+            ref={plungerRef}
+            geometry={syringeGeos['Syringe_Plunger']}
+            material={materials.syringePlunger}
+            {...makePointerProps(
+              'syringe_gel',
+              'Émbolo · Flujo pseudoplástico bajo presión',
+              callbacks
+            )}
+          />
+        )}
+        {syringeGeos['Syringe_Needle'] && (
+          <mesh
+            geometry={syringeGeos['Syringe_Needle']}
+            material={materials.silverSatin}
+            {...makePointerProps('syringe_gel', 'Cánula metálica de depósito in situ', callbacks)}
+          />
+        )}
+        <group ref={dropsRef}>
+          {Array.from({ length: 8 }, (_, idx) => (
+            <mesh key={idx} scale={[0.75, 1.9, 0.75]}>
+              <sphereGeometry args={[0.095, 12, 10]} />
+              <meshPhysicalMaterial
+                color="#5ec2cc"
+                roughness={0.2}
+                transparent
+                opacity={0.78}
+              />
+            </mesh>
+          ))}
+        </group>
+      </group>
+
+      {/* Localized Nanogel Depot formed in situ inside tumor */}
+      <group position={[2.2, 0, 0.25]}>
         <NanocelluloseScaffold
           scale={depotScale}
           cutaway={xrayMode}
@@ -411,10 +393,10 @@ function Set05TumorMicroenvironment({
         />
       </group>
 
-      {/* Released AgNPs (carry folate if enabled) */}
+      {/* Released AgNPs responding to Warburg acidity */}
       <group ref={releasedRef}>
         {releasedTargets.map((_, idx) => (
-          <group key={idx} visible={localT > 0.18 && idx < visCount}>
+          <group key={idx} visible={localT > 0.24 && idx < visCount}>
             <EditorialAgNPUnit
               scale={0.18}
               withFolate={ligandMode !== 'base'}
@@ -431,7 +413,7 @@ function Set05TumorMicroenvironment({
             key={idx}
             {...makePointerProps('warburg_tumor', 'Protones H⁺ · Acidez tumoral (Warburg)', callbacks)}
           >
-            <sphereGeometry args={[0.055, 8, 8]} />
+            <sphereGeometry args={[0.055, 10, 8]} />
             <meshStandardMaterial color={EDITORIAL_COLORS.folateHead} roughness={0.45} />
           </mesh>
         ))}
@@ -441,9 +423,9 @@ function Set05TumorMicroenvironment({
 }
 
 /* --------------------------------------------------------------------------
- * SET 06: Nanogel–Tissue Interaction & Ligand Targeting (Base vs +Folate)
+ * SET 05: Nanogel–Tissue Interaction & Ligand Targeting (Base vs +Folate)
  * -------------------------------------------------------------------------- */
-function Set06TissueInteraction({
+function Set05TissueInteraction({
   localT,
   xrayMode,
   ligandMode,
@@ -596,9 +578,9 @@ function Set06TissueInteraction({
 }
 
 /* --------------------------------------------------------------------------
- * SET 07: Endocytosis (Horizontal Dynamin Neck Scission) & Endosomal Escape
+ * SET 06: Endocytosis (Horizontal Dynamin Neck Scission) & Endosomal Escape
  * -------------------------------------------------------------------------- */
-function Set07EndocytosisEscape({
+function Set06EndocytosisEscape({
   localT,
   xrayMode,
   ligandMode,
@@ -674,7 +656,6 @@ function Set07EndocytosisEscape({
   useFrame(({ clock }) => {
     const t = clock.getElapsedTime();
 
-    // 1. Plasma Membrane at Y = 1.90: invaginates, forms neck, pinches & seals back flat!
     const invag = smoothstep(0.0, 0.24, localT);
     const scission = smoothstep(0.18, 0.34, localT);
     const detach = smoothstep(0.30, 0.42, localT);
@@ -685,7 +666,6 @@ function Set07EndocytosisEscape({
         const r = Math.hypot(x, z);
         const r2 = r * r;
         const well = Math.exp(-r2 / 3.4) * pitDepth;
-        // Pinch phospholipids radially inward around the neck during scission, then seal at Y=1.90
         const neckPinch =
           r > 0.25 && r < 2.2 ? Math.sin(scission * Math.PI) * 0.26 * (1 / (0.6 + r)) : 0;
         const px = x * (1 - neckPinch);
@@ -696,25 +676,20 @@ function Set07EndocytosisEscape({
       });
     }
 
-    // Translucent membrane neck being strangled by Dynamin at Y = 1.42
     if (neckFunnelRef.current) {
-      const visibleNeck = localT > 0.06 && localT < 0.35;
-      neckFunnelRef.current.visible = visibleNeck;
+      neckFunnelRef.current.visible = localT > 0.06 && localT < 0.35;
       const neckPinchScale = Math.max(0.08, 1.0 - scission * 0.92);
       neckFunnelRef.current.scale.set(neckPinchScale, 1, neckPinchScale);
     }
 
-    // 2. Horizontal Dynamin Collar in X-Z membrane plane strangling the neck at Y = 1.42
     if (dynaminRef.current) {
-      const dynActive = localT > 0.12 && localT < 0.37;
-      dynaminRef.current.visible = dynActive;
+      dynaminRef.current.visible = localT > 0.12 && localT < 0.37;
       dynaminRef.current.position.set(0, 1.42, 0);
       dynaminRef.current.rotation.set(0, t * 0.45, 0);
       const collarScale = Math.max(0.18, 1.15 - scission * 0.95);
       dynaminRef.current.scale.set(collarScale, 1, collarScale);
     }
 
-    // 3. Budding Vesicle (Cargo + Clathrin Basket) descending cleanly below neck into cytosol
     const vesicleY = 1.6 - cmePhase * 1.9 - detach * 0.15 + smoothstep(0.42, 0.55, localT) * 0.45;
     if (cargoRef.current && clathrinRef.current) {
       cargoRef.current.position.set(0, vesicleY, 0);
@@ -726,7 +701,6 @@ function Set07EndocytosisEscape({
       clathrinRef.current.scale.setScalar((0.55 + cmePhase * 0.42) * Math.max(0.01, fadeClathrin));
     }
 
-    // 4. Endosome + Corona Opening inside cytosol
     if (endoRef.current) {
       endoRef.current.position.set(0, vesicleY, 0);
       const col = new THREE.Color(0x3b82a6)
@@ -743,11 +717,9 @@ function Set07EndocytosisEscape({
 
     if (coronaShellRef.current) {
       coronaShellRef.current.visible = escapePhase < 0.85;
-      const expand = 1 + acidPhase * 0.75;
-      coronaShellRef.current.scale.setScalar(expand);
+      coronaShellRef.current.scale.setScalar(1 + acidPhase * 0.75);
     }
 
-    // 5. V-ATPase Protons & ROS Peroxidation Waves
     if (protonsRef.current) {
       protonsRef.current.position.set(0, vesicleY, 0);
       protonsRef.current.children.forEach((child, idx) => {
@@ -770,7 +742,6 @@ function Set07EndocytosisEscape({
       });
     }
 
-    // 6. Cytosolic Ag+ Escape Stream
     if (escapeIonsRef.current) {
       escapeIonsRef.current.position.set(0, vesicleY, 0);
       const visAg = Math.round(escapeDirs.length * agConcentration);
@@ -786,11 +757,10 @@ function Set07EndocytosisEscape({
   });
 
   const showCmeMembrane = localT < 0.44;
-  const showEndosome = localT >= 0.30;
+  const showEndosome = localT >= 0.3;
 
   return (
     <group>
-      {/* Plasma Membrane at Y = 1.90 + Strangled Neck Funnel */}
       {showCmeMembrane && (
         <group>
           <group ref={headsTopRef}>
@@ -826,7 +796,6 @@ function Set07EndocytosisEscape({
             ))}
           </group>
 
-          {/* Translucent membrane neck strangled by Dynamin before sealing */}
           <mesh ref={neckFunnelRef} position={[0, 1.38, 0]}>
             <cylinderGeometry args={[0.85, 1.15, 0.95, 24, 1, true]} />
             <meshPhysicalMaterial
@@ -841,7 +810,6 @@ function Set07EndocytosisEscape({
         </group>
       )}
 
-      {/* Horizontal Dynamin Collar at Membrane Neck */}
       {clathrinGeos['Dynamin_Collar'] && (
         <mesh
           ref={dynaminRef}
@@ -855,7 +823,6 @@ function Set07EndocytosisEscape({
         />
       )}
 
-      {/* Clathrin Polyhedral Basket around budding vesicle */}
       <group ref={clathrinRef} visible={localT < 0.46}>
         {clathrinGeos['Clathrin_Struts'] && (
           <mesh
@@ -869,7 +836,6 @@ function Set07EndocytosisEscape({
         )}
       </group>
 
-      {/* Core AgNP + Rosemary Corona (+Folate if active) */}
       <group ref={cargoRef}>
         {coreGeos['AgNP_Core'] && (
           <mesh
@@ -893,9 +859,7 @@ function Set07EndocytosisEscape({
               material={materials.rosemaryStrand}
               {...makePointerProps(
                 'rosemary_corona',
-                acidPhase > 0.3
-                  ? 'Corona de romero protonándose (pH 4.5)'
-                  : 'Corona de romero',
+                acidPhase > 0.3 ? 'Corona de romero protonándose (pH 4.5)' : 'Corona de romero',
                 callbacks
               )}
             />
@@ -927,7 +891,6 @@ function Set07EndocytosisEscape({
         </group>
       </group>
 
-      {/* Endosome with Front-Facing 3/4 Cutaway + V-ATPase Pumps */}
       {showEndosome && (
         <group>
           <group ref={endoRef}>
@@ -953,7 +916,7 @@ function Set07EndocytosisEscape({
                 callbacks
               )}
             >
-              <sphereGeometry args={[3.15, 42, 30, Math.PI * 1.08, Math.PI * 1.30, 0, Math.PI]} />
+              <sphereGeometry args={[3.15, 42, 30, Math.PI * 1.08, Math.PI * 1.3, 0, Math.PI]} />
               <meshPhysicalMaterial
                 color="#3b82a6"
                 roughness={0.22}
@@ -1033,9 +996,9 @@ function Set07EndocytosisEscape({
 }
 
 /* --------------------------------------------------------------------------
- * SET 08: Mitochondrial Oxidative Stress & Apoptosis (Front-Facing Cutaways)
+ * SET 07: Explicit Intracristal Mitochondria — GSH (-SH) Sequestration & ROS
  * -------------------------------------------------------------------------- */
-function Set08MitochondriaApoptosis({
+function Set07MitochondrialStress({
   localT,
   xrayMode,
   agConcentration,
@@ -1053,66 +1016,100 @@ function Set08MitochondriaApoptosis({
   callbacks: InteractionCallbacks;
 }) {
   const mitoGeos = useGlbGeometries(MODEL_PATHS.mitochondrion);
-  const apopGeos = useGlbGeometries(MODEL_PATHS.apoptosomeCell);
 
-  const mitoGroupRef = useRef<THREE.Group>(null);
-  const agIonsRef = useRef<THREE.Group>(null);
-  const gshRef = useRef<THREE.Group>(null);
-  const rosRef = useRef<THREE.Group>(null);
-  const apopGroupRef = useRef<THREE.Group>(null);
-  const cytStreamRef = useRef<THREE.Group>(null);
-  const wheelARef = useRef<THREE.Mesh>(null);
-  const wheelBRef = useRef<THREE.Mesh>(null);
-  const bodiesRef = useRef<THREE.Group>(null);
-
-  const padlockPositions = useMemo<[number, number, number][]>(
-    () => [
-      [-4.2, 2.8, 1.0],
-      [0.2, 3.2, 1.2],
-      [4.3, 2.5, 0.9],
-      [-3.8, -2.7, 1.0],
-      [4.0, -2.6, 1.0],
-    ],
+  const cristaeMat = useMemo(
+    () =>
+      new THREE.MeshPhysicalMaterial({
+        color: EDITORIAL_COLORS.mitoCristae,
+        roughness: 0.34,
+        transparent: true,
+        opacity: 0.5,
+        side: THREE.DoubleSide,
+      }),
+    []
+  );
+  const dnaMat = useMemo(
+    () =>
+      new THREE.MeshStandardMaterial({
+        color: EDITORIAL_COLORS.mitoDna,
+        roughness: 0.38,
+        metalness: 0.08,
+      }),
     []
   );
 
-  const gshPositions = useMemo(
+  const mitoGroupRef = useRef<THREE.Group>(null);
+  const gshTripeptideRef = useRef<THREE.Group>(null);
+  const agIonsRef = useRef<THREE.Group>(null);
+  const agSBridgesRef = useRef<THREE.Group>(null);
+  const padlocksRef = useRef<THREE.Group>(null);
+  const cristaeLipidsRef = useRef<THREE.Group>(null);
+  const rosBurstRef = useRef<THREE.Group>(null);
+  const mtDnaRef = useRef<THREE.Mesh>(null);
+
+  // 14 explicit GSH tripeptides (Glu-Cys-Gly + golden -SH thiol sphere) inside mitochondrial matrix
+  const gshNodes = useMemo(
     () =>
-      Array.from({ length: 16 }, (_, i) => {
-        const x = ((i % 4) - 1.5) * 1.9;
-        const y = ((Math.floor(i / 4) % 4) - 1.5) * 0.65;
-        const z = Math.sin(i * 1.7) * 0.9;
+      Array.from({ length: 14 }, (_, i) => {
+        const x = -3.8 + (i % 7) * 1.25;
+        const y = (i < 7 ? 0.85 : -0.75) + Math.sin(i * 1.6) * 0.35;
+        const z = 0.25 + Math.cos(i * 2.1) * 0.65;
         return new THREE.Vector3(x, y, z);
       }),
     []
   );
 
-  const agOuterPositions = useMemo(
+  // 14 entering Ag+ cations converging directly onto each GSH -SH thiol sphere
+  const agEntryOrigins = useMemo(
     () =>
-      Array.from({ length: 18 }, (_, i) => {
-        const ang = (i / 18) * Math.PI * 2;
-        return new THREE.Vector3(Math.cos(ang) * 7.8, Math.sin(ang) * 4.4, Math.sin(i * 2.1) * 2.5);
+      Array.from({ length: 14 }, (_, i) => {
+        const ang = (i / 14) * Math.PI * 2;
+        return new THREE.Vector3(
+          Math.cos(ang) * 7.2,
+          Math.sin(ang) * 4.2,
+          1.4 + Math.sin(i * 1.7) * 1.5
+        );
       }),
     []
   );
 
-  const cytTargets = useMemo(
-    () =>
-      Array.from({ length: 16 }, (_, i) => ({
-        start: new THREE.Vector3(-2.4, -0.5, 0.4),
-        end: (i % 2 === 0 ? new THREE.Vector3(1.6, 1.0, 0.4) : new THREE.Vector3(3.2, -1.0, -0.4)).add(
-          new THREE.Vector3(Math.sin(i) * 0.45, Math.cos(i) * 0.45, 0)
-        ),
-        offset: i / 16,
-      })),
+  // 5 outer thiol padlock shields
+  const padlockPositions = useMemo<[number, number, number][]>(
+    () => [
+      [-4.2, 2.7, 1.1],
+      [0.1, 3.1, 1.2],
+      [4.2, 2.5, 0.9],
+      [-3.8, -2.6, 1.0],
+      [4.0, -2.5, 1.0],
+    ],
     []
   );
 
-  const bodyDirs = useMemo(
+  // 36 inner-cristae phospholipid heads oxidized by ROS
+  const cristaeLipids = useMemo(
     () =>
-      Array.from({ length: 8 }, (_, i) => {
-        const ang = (i / 8) * Math.PI * 2;
-        return new THREE.Vector3(Math.cos(ang) * 4.2, Math.sin(ang) * 3.0, Math.sin(i * 1.9) * 1.6);
+      Array.from({ length: 36 }, (_, i) => {
+        const rx = -4.3 + (i / 35) * 8.6;
+        const ang = i * 1.35;
+        return new THREE.Vector3(
+          rx,
+          Math.sin(ang) * 1.45 + Math.sin(rx * 0.25) * 0.24,
+          Math.cos(ang) * 1.25
+        );
+      }),
+    []
+  );
+
+  // 8 ETC respiratory sources matching Mito_ETC_Complexes in build_blender_assets.py
+  const etcSources = useMemo(
+    () =>
+      [-3.6, -2.3, -0.8, 0.6, 2.0, 3.4, -1.6, 1.4].map((ex, idx) => {
+        const ang = idx * 1.25 - 0.8;
+        return new THREE.Vector3(
+          ex,
+          Math.sin(ang) * 1.35 + Math.sin(ex * 0.25) * 0.26,
+          Math.cos(ang) * 1.05
+        );
       }),
     []
   );
@@ -1120,91 +1117,113 @@ function Set08MitochondriaApoptosis({
   useFrame(({ clock }) => {
     const t = clock.getElapsedTime();
     const boost = pulseBoost / 100;
-    const agInflux = Math.min(1, localT * 1.8 + boost);
-    const rosStorm = Math.min(1, Math.max(0, (localT - 0.15) * 1.6 + boost)) * (0.45 + rosRate * 0.55);
-    const apopPhase = smoothstep(0.45, 0.95, localT);
+    const seqT = Math.min(1, localT * 1.85 + boost);
+    const rosT = Math.min(1, Math.max(0, (localT - 0.24) * 1.45 + boost)) * (0.45 + rosRate * 0.55);
+
+    // Cristae oxidation & swelling + mtDNA oxidative shift
+    cristaeMat.color
+      .setHex(EDITORIAL_COLORS.mitoCristae)
+      .lerp(new THREE.Color(0xb84a58), rosT);
+    dnaMat.color
+      .setHex(EDITORIAL_COLORS.mitoDna)
+      .lerp(new THREE.Color(0xdc2626), rosT);
 
     if (mitoGroupRef.current) {
-      const targetPos = new THREE.Vector3(-2.4 * apopPhase, -0.9 * apopPhase, 0);
-      mitoGroupRef.current.position.copy(targetPos);
-      const s = (1 + rosStorm * 0.08) * (1 - apopPhase * 0.48);
-      mitoGroupRef.current.scale.setScalar(s);
-      mitoGroupRef.current.rotation.z = apopPhase * 0.22;
+      const swell = 1 + rosT * 0.06;
+      mitoGroupRef.current.scale.set(swell, swell, swell);
     }
 
-    if (agIonsRef.current) {
-      const visAg = Math.round(agOuterPositions.length * agConcentration);
-      agIonsRef.current.children.forEach((child, idx) => {
-        child.visible = idx < visAg && apopPhase < 0.75;
-        if (!child.visible) return;
-        const tgt = gshPositions[idx % gshPositions.length];
-        child.position.lerpVectors(agOuterPositions[idx], tgt, agInflux);
-      });
+    if (mtDnaRef.current) {
+      mtDnaRef.current.rotation.y = t * 0.12;
     }
 
-    if (gshRef.current) {
-      gshRef.current.children.forEach((grp, idx) => {
-        grp.visible = apopPhase < 0.65;
-        grp.position.y = padlockPositions[idx][1] + Math.sin(t * 1.1 + idx) * 0.1;
-        const blocked = agInflux > 0.35 + idx * 0.1;
-        const mesh = grp.children[0] as THREE.Mesh;
-        const shackle = grp.children[1] as THREE.Mesh;
-        if (mesh && shackle) {
-          (mesh.material as THREE.MeshStandardMaterial).color.setHex(
-            blocked ? EDITORIAL_COLORS.gshBlocked : EDITORIAL_COLORS.gshShield
+    // Converging Ag+ ions -> bind directly to GSH -SH thiol sphere (0.28 offset)
+    const visAg = Math.round(agEntryOrigins.length * agConcentration);
+    if (agIonsRef.current && gshTripeptideRef.current && agSBridgesRef.current) {
+      gshNodes.forEach((gPos, idx) => {
+        const thiolPos = new THREE.Vector3(gPos.x + 0.22, gPos.y + 0.08, gPos.z + 0.06);
+        const boundPos = new THREE.Vector3(thiolPos.x + 0.26, thiolPos.y + 0.06, thiolPos.z + 0.06);
+        const isVis = idx < visAg;
+        const agMesh = agIonsRef.current!.children[idx] as THREE.Mesh;
+        agMesh.visible = isVis;
+        if (isVis) {
+          agMesh.position.lerpVectors(agEntryOrigins[idx], boundPos, seqT);
+        }
+
+        const isBound = isVis && seqT > 0.72;
+        const gshGrp = gshTripeptideRef.current!.children[idx];
+        // Turn GSH tripeptide lobes slate-gray when sequestered into Ag-SG
+        for (let k = 0; k < 3; k++) {
+          const lobe = gshGrp.children[k] as THREE.Mesh;
+          (lobe.material as THREE.MeshStandardMaterial).color.setHex(
+            isBound ? EDITORIAL_COLORS.gshBlocked : EDITORIAL_COLORS.gshShield
           );
-          shackle.rotation.z = blocked ? -0.58 : 0;
+        }
+        // Golden -SH sulfur dims when locked into Ag-S
+        const thiolSphere = gshGrp.children[3] as THREE.Mesh;
+        (thiolSphere.material as THREE.MeshStandardMaterial).color.setHex(
+          isBound ? 0x94a3b8 : EDITORIAL_COLORS.folateHead
+        );
+
+        // Visible Ag-S covalent sequestration bridge rod
+        const bridge = agSBridgesRef.current!.children[idx] as THREE.Mesh;
+        bridge.visible = isBound;
+        if (isBound) {
+          bridge.position.lerpVectors(thiolPos, boundPos, 0.5);
+          bridge.quaternion.setFromUnitVectors(
+            new THREE.Vector3(0, 1, 0),
+            boundPos.clone().sub(thiolPos).normalize()
+          );
         }
       });
     }
 
-    if (rosRef.current) {
-      const visRos = Math.round(32 * Math.min(1, 0.18 + rosStorm * 0.82));
-      rosRef.current.children.forEach((child, idx) => {
-        child.visible = idx < visRos && apopPhase < 0.85;
-        if (!child.visible) return;
-        const phase = t * (0.85 + (idx % 4) * 0.2) + idx;
-        const rad = 1.6 + (idx % 5) * 0.65;
-        child.position.set(
-          Math.sin(phase) * rad * 1.6,
-          Math.cos(phase * 1.1) * rad * 0.7,
-          Math.cos(phase * 0.85) * rad * 0.85
+    // Outer GSH padlock shields unlock and turn slate-gray
+    if (padlocksRef.current) {
+      padlocksRef.current.children.forEach((grp, idx) => {
+        grp.position.y = padlockPositions[idx][1] + Math.sin(t * 1.1 + idx) * 0.08;
+        const broken = seqT > 0.36 + idx * 0.1;
+        const body = grp.children[0] as THREE.Mesh;
+        const shackle = grp.children[1] as THREE.Mesh;
+        (body.material as THREE.MeshStandardMaterial).color.setHex(
+          broken ? EDITORIAL_COLORS.gshBlocked : EDITORIAL_COLORS.gshShield
+        );
+        shackle.rotation.z = broken ? -0.6 : 0;
+      });
+    }
+
+    // Inner-cristae phospholipids oxidize from cyan to orange-red with thermal jitter
+    if (cristaeLipidsRef.current) {
+      cristaeLipidsRef.current.children.forEach((child, idx) => {
+        const mesh = child as THREE.Mesh;
+        const isOx = rosT > (idx / cristaeLipids.length) * 0.85;
+        (mesh.material as THREE.MeshStandardMaterial).color.setHex(
+          isOx ? EDITORIAL_COLORS.rosHot : EDITORIAL_COLORS.lipidHead
+        );
+        const jitter = isOx ? Math.sin(t * 14 + idx) * 0.04 * rosT : 0;
+        mesh.position.set(
+          cristaeLipids[idx].x + jitter,
+          cristaeLipids[idx].y + jitter,
+          cristaeLipids[idx].z
         );
       });
     }
 
-    if (apopGroupRef.current) {
-      apopGroupRef.current.visible = localT > 0.36;
-      const appear = smoothstep(0.36, 0.62, localT);
-      apopGroupRef.current.scale.setScalar(0.5 + appear * 0.5);
-    }
-
-    if (wheelARef.current && wheelBRef.current) {
-      wheelARef.current.rotation.z = t * 0.35;
-      wheelBRef.current.rotation.z = -t * 0.3;
-      const wheelScale = smoothstep(0.45, 0.72, localT);
-      wheelARef.current.scale.setScalar(Math.max(0.01, wheelScale));
-      wheelBRef.current.scale.setScalar(Math.max(0.01, wheelScale));
-    }
-
-    if (cytStreamRef.current) {
-      cytStreamRef.current.children.forEach((child, idx) => {
-        child.visible = localT > 0.44;
+    // ROS radicals erupting directly from ETC respiratory complexes
+    if (rosBurstRef.current) {
+      const activeCount = Math.round(36 * Math.min(1, 0.14 + rosT * 0.86));
+      rosBurstRef.current.children.forEach((child, idx) => {
+        child.visible = idx < activeCount;
         if (!child.visible) return;
-        const cfg = cytTargets[idx];
-        const flow = (t * 0.35 + cfg.offset) % 1;
-        child.position.lerpVectors(cfg.start, cfg.end, flow);
-        child.position.y += Math.sin(flow * Math.PI) * 0.9;
-      });
-    }
-
-    if (bodiesRef.current) {
-      const bAppear = smoothstep(0.62, 0.96, localT);
-      bodiesRef.current.children.forEach((child, idx) => {
-        child.visible = localT > 0.6;
-        child.scale.setScalar(0.25 + bAppear * 0.75);
-        child.position.copy(bodyDirs[idx]).multiplyScalar(0.68 + bAppear * 0.32);
-        child.position.y += Math.sin(t * 1.0 + idx) * 0.1;
+        const src = etcSources[idx % etcSources.length];
+        const cyc = (t * (0.65 + (idx % 4) * 0.16) + idx * 0.19) % 1;
+        const ang = idx * 2.1 + t * 1.2;
+        const spread = 0.25 + cyc * 1.65;
+        child.position.set(
+          src.x + Math.cos(ang) * spread * 0.8,
+          src.y + Math.sin(ang * 1.2) * spread * 0.65,
+          src.z + Math.sin(ang * 0.7) * spread * 0.65
+        );
       });
     }
   });
@@ -1227,34 +1246,97 @@ function Set08MitochondriaApoptosis({
         {mitoGeos['Mito_Cristae_Inner'] && (
           <mesh
             geometry={mitoGeos['Mito_Cristae_Inner']}
-            material={materials.mitoCristae}
+            material={cristaeMat}
             {...makePointerProps(
               'mito_cristae',
-              'Crestas mitocondriales internas (ΔΨm)',
+              'Crestas mitocondriales internas bajo estrés oxidativo',
+              callbacks
+            )}
+          />
+        )}
+        {mitoGeos['Mito_ETC_Complexes'] && (
+          <mesh
+            geometry={mitoGeos['Mito_ETC_Complexes']}
+            material={materials.mitoEtc}
+            {...makePointerProps(
+              'etc_complex',
+              'Complejos ETC (Fuga electrónica → Generación de ROS)',
               callbacks
             )}
           />
         )}
         {mitoGeos['Mito_MtDNA_Helix'] && (
           <mesh
+            ref={mtDnaRef}
             geometry={mitoGeos['Mito_MtDNA_Helix']}
-            material={materials.mitoDna}
-            {...makePointerProps('mito_cristae', 'ADN mitocondrial circular (mtDNA)', callbacks)}
+            material={dnaMat}
+            {...makePointerProps('mito_cristae', 'ADN mitocondrial (Daño oxidativo por ROS)', callbacks)}
           />
         )}
-        {gshPositions.map((pos, idx) => (
+      </group>
+
+      {/* 14 Explicit GSH Tripeptides (Glu-Cys-Gly + Golden -SH Active Thiol) */}
+      <group ref={gshTripeptideRef}>
+        {gshNodes.map((pos, idx) => (
+          <group key={idx} position={[pos.x, pos.y, pos.z]}>
+            <mesh
+              position={[-0.14, -0.05, 0]}
+              {...makePointerProps('gsh', 'Glutatión reducido GSH (Glu–Cys–Gly)', callbacks)}
+            >
+              <sphereGeometry args={[0.11, 10, 8]} />
+              <meshStandardMaterial color={EDITORIAL_COLORS.gshShield} roughness={0.4} />
+            </mesh>
+            <mesh
+              position={[0.02, 0.04, 0]}
+              {...makePointerProps('gsh', 'Glutatión reducido GSH (Cisteína)', callbacks)}
+            >
+              <sphereGeometry args={[0.125, 10, 8]} />
+              <meshStandardMaterial color={EDITORIAL_COLORS.gshShield} roughness={0.4} />
+            </mesh>
+            <mesh position={[-0.04, -0.13, 0.06]}>
+              <sphereGeometry args={[0.1, 10, 8]} />
+              <meshStandardMaterial color={EDITORIAL_COLORS.gshShield} roughness={0.4} />
+            </mesh>
+            <mesh
+              position={[0.22, 0.08, 0.06]}
+              {...makePointerProps('gsh', 'Grupo tiol activo (–SH) blanco de Ag⁺', callbacks)}
+            >
+              <sphereGeometry args={[0.095, 12, 10]} />
+              <meshStandardMaterial color={EDITORIAL_COLORS.folateHead} roughness={0.32} />
+            </mesh>
+          </group>
+        ))}
+      </group>
+
+      {/* Entering Ag+ Cations */}
+      <group ref={agIonsRef}>
+        {agEntryOrigins.map((_, idx) => (
           <mesh
             key={idx}
-            position={[pos.x, pos.y, pos.z]}
-            {...makePointerProps('gsh', 'Glutatión reducido (GSH)', callbacks)}
+            material={materials.silverSatin}
+            {...makePointerProps('ag_ion', 'Ion Plata (Ag⁺ · Secuestro del tiol –SH)', callbacks)}
           >
-            <sphereGeometry args={[0.14, 12, 10]} />
-            <meshStandardMaterial color={EDITORIAL_COLORS.gshShield} roughness={0.42} />
+            <sphereGeometry args={[0.13, 14, 10]} />
           </mesh>
         ))}
       </group>
 
-      <group ref={gshRef}>
+      {/* Ag-S Covalent Sequestration Bridges */}
+      <group ref={agSBridgesRef}>
+        {gshNodes.map((_, idx) => (
+          <mesh
+            key={idx}
+            visible={false}
+            {...makePointerProps('gsh', 'Complejo bloqueado Ag–SG (Escudo inactivado)', callbacks)}
+          >
+            <cylinderGeometry args={[0.036, 0.036, 0.26, 8]} />
+            <meshStandardMaterial color="#e2e8f0" roughness={0.3} metalness={0.7} />
+          </mesh>
+        ))}
+      </group>
+
+      {/* 5 Outer GSH Thiol Padlock Shields */}
+      <group ref={padlocksRef}>
         {padlockPositions.map((pos, idx) => (
           <group key={idx} position={pos}>
             <mesh
@@ -1264,15 +1346,15 @@ function Set08MitochondriaApoptosis({
                 callbacks
               )}
             >
-              <boxGeometry args={[0.56, 0.46, 0.2]} />
+              <boxGeometry args={[0.52, 0.42, 0.18]} />
               <meshStandardMaterial
                 color={EDITORIAL_COLORS.gshShield}
                 roughness={0.36}
                 metalness={0.3}
               />
             </mesh>
-            <mesh position={[0, 0.24, 0]}>
-              <torusGeometry args={[0.2, 0.052, 10, 20, Math.PI]} />
+            <mesh position={[0, 0.22, 0]}>
+              <torusGeometry args={[0.18, 0.048, 10, 20, Math.PI]} />
               <meshStandardMaterial
                 color={EDITORIAL_COLORS.gshShield}
                 roughness={0.36}
@@ -1283,36 +1365,138 @@ function Set08MitochondriaApoptosis({
         ))}
       </group>
 
-      <group ref={agIonsRef}>
-        {agOuterPositions.map((_, idx) => (
+      {/* 36 Inner Cristae Phospholipids Oxidized by ROS */}
+      <group ref={cristaeLipidsRef}>
+        {cristaeLipids.map((pos, idx) => (
           <mesh
             key={idx}
-            material={materials.silverSatin}
-            {...makePointerProps('ag_ion', 'Ion Plata (Ag⁺ · Secuestro de tiol –SH)', callbacks)}
+            position={[pos.x, pos.y, pos.z]}
+            {...makePointerProps(
+              'mito_cristae',
+              'Fosfolípido de cresta mitocondrial (Peroxidación lipídica)',
+              callbacks
+            )}
           >
-            <sphereGeometry args={[0.135, 14, 10]} />
+            <sphereGeometry args={[0.095, 10, 8]} />
+            <meshStandardMaterial color={EDITORIAL_COLORS.lipidHead} roughness={0.38} />
           </mesh>
         ))}
       </group>
 
-      <group ref={rosRef}>
-        {Array.from({ length: 32 }, (_, idx) => (
+      {/* 36 Fiery ROS Radicals Erupting from ETC Complexes */}
+      <group ref={rosBurstRef}>
+        {Array.from({ length: 36 }, (_, idx) => (
           <mesh
             key={idx}
-            {...makePointerProps('ros', 'Especies Reactivas de Oxígeno (ROS)', callbacks)}
+            {...makePointerProps(
+              'ros',
+              'Ráfaga intracristal de ROS (O₂•⁻ / H₂O₂ / •OH)',
+              callbacks
+            )}
           >
-            <sphereGeometry args={[0.1, 10, 8]} />
+            <sphereGeometry args={[0.105, 12, 10]} />
             <meshStandardMaterial
               color={idx % 2 === 0 ? EDITORIAL_COLORS.rosHot : EDITORIAL_COLORS.rosRadical}
-              emissive="#92400e"
-              emissiveIntensity={0.42}
-              roughness={0.35}
+              emissive="#9a3412"
+              emissiveIntensity={0.5}
+              roughness={0.32}
             />
           </mesh>
         ))}
       </group>
+    </group>
+  );
+}
 
-      <group ref={apopGroupRef}>
+/* --------------------------------------------------------------------------
+ * SET 08: Mitochondrial Collapse, Cytochrome c & Caspase 9 -> 3 Apoptosis
+ * -------------------------------------------------------------------------- */
+function Set08Apoptosis({
+  localT,
+  xrayMode,
+  materials,
+  callbacks,
+}: {
+  localT: number;
+  xrayMode: boolean;
+  materials: EditorialMaterialSet;
+  callbacks: InteractionCallbacks;
+}) {
+  const mitoGeos = useGlbGeometries(MODEL_PATHS.mitochondrion);
+  const apopGeos = useGlbGeometries(MODEL_PATHS.apoptosomeCell);
+
+  const cellGroupRef = useRef<THREE.Group>(null);
+  const poreRef = useRef<THREE.Mesh>(null);
+  const cytStreamRef = useRef<THREE.Group>(null);
+  const wheelARef = useRef<THREE.Mesh>(null);
+  const wheelBRef = useRef<THREE.Mesh>(null);
+  const bodiesRef = useRef<THREE.Group>(null);
+
+  const cytTargets = useMemo(
+    () =>
+      Array.from({ length: 18 }, (_, i) => ({
+        start: new THREE.Vector3(-1.85, -0.35, 0.45),
+        end: (i % 2 === 0 ? new THREE.Vector3(1.6, 1.05, 0.4) : new THREE.Vector3(3.1, -1.0, -0.4)).add(
+          new THREE.Vector3(Math.sin(i) * 0.45, Math.cos(i) * 0.45, 0)
+        ),
+        offset: i / 18,
+      })),
+    []
+  );
+
+  const bodyDirs = useMemo(
+    () =>
+      Array.from({ length: 8 }, (_, i) => {
+        const ang = (i / 8) * Math.PI * 2;
+        return new THREE.Vector3(Math.cos(ang) * 4.2, Math.sin(ang) * 3.0, Math.sin(i * 1.9) * 1.6);
+      }),
+    []
+  );
+
+  useFrame(({ clock }) => {
+    const t = clock.getElapsedTime();
+    const apopT = smoothstep(0.05, 0.95, localT);
+
+    if (cellGroupRef.current) {
+      const shrink = 1 - apopT * 0.14;
+      cellGroupRef.current.scale.setScalar(shrink);
+    }
+
+    if (poreRef.current) {
+      poreRef.current.rotation.z = t * 0.7;
+    }
+
+    if (wheelARef.current && wheelBRef.current) {
+      wheelARef.current.rotation.z = t * 0.35;
+      wheelBRef.current.rotation.z = -t * 0.3;
+      const wheelScale = 0.45 + smoothstep(0.08, 0.48, localT) * 0.55;
+      wheelARef.current.scale.setScalar(wheelScale);
+      wheelBRef.current.scale.setScalar(wheelScale);
+    }
+
+    if (cytStreamRef.current) {
+      cytStreamRef.current.children.forEach((child, idx) => {
+        const cfg = cytTargets[idx];
+        const flow = (t * 0.38 + cfg.offset) % 1;
+        child.position.lerpVectors(cfg.start, cfg.end, flow);
+        child.position.y += Math.sin(flow * Math.PI) * 0.95;
+      });
+    }
+
+    if (bodiesRef.current) {
+      const bAppear = smoothstep(0.45, 0.95, localT);
+      bodiesRef.current.children.forEach((child, idx) => {
+        child.visible = localT > 0.42;
+        child.scale.setScalar(0.25 + bAppear * 0.75);
+        child.position.copy(bodyDirs[idx]).multiplyScalar(0.68 + bAppear * 0.32);
+        child.position.y += Math.sin(t * 1.0 + idx) * 0.1;
+      });
+    }
+  });
+
+  return (
+    <group>
+      <group ref={cellGroupRef}>
         {apopGeos['Cell_Cortex_Cutaway'] && (
           <mesh
             geometry={apopGeos['Cell_Cortex_Cutaway']}
@@ -1325,66 +1509,80 @@ function Set08MitochondriaApoptosis({
             )}
           />
         )}
-        {apopGeos['Apoptosome_Wheel'] && (
-          <>
-            <mesh
-              ref={wheelARef}
-              geometry={apopGeos['Apoptosome_Wheel']}
-              material={materials.apoptosome}
-              position={[1.6, 1.0, 0.4]}
-              {...makePointerProps(
-                'apoptosome',
-                'Complejo activo Caspasa 9 → Caspasa 3',
-                callbacks
-              )}
-            />
-            <mesh
-              ref={wheelBRef}
-              geometry={apopGeos['Apoptosome_Wheel']}
-              material={materials.apoptosome}
-              position={[3.2, -1.0, -0.4]}
-              {...makePointerProps('apoptosome', 'Apoptosoma ejecutor Caspasa 3', callbacks)}
-            />
-          </>
+      </group>
+
+      {/* Oxidatively collapsed mitochondrion releasing Cytochrome c */}
+      <group position={[-2.5, -0.9, 0]} scale={0.5} rotation={[0, 0, 0.22]}>
+        {mitoGeos['Mito_Outer_Cutaway'] && (
+          <mesh
+            geometry={mitoGeos['Mito_Outer_Cutaway']}
+            material={materials.mitoOuter}
+            visible={xrayMode}
+            {...makePointerProps('mito_cristae', 'Mitocondria colapsada (ΔΨm perdido)', callbacks)}
+          />
         )}
+        {mitoGeos['Mito_Cristae_Inner'] && (
+          <mesh geometry={mitoGeos['Mito_Cristae_Inner']} material={materials.tumorCell} />
+        )}
+        <mesh
+          ref={poreRef}
+          position={[1.35, 1.1, 0.85]}
+          rotation={[0.4, 0.4, 0]}
+          {...makePointerProps('cytc', 'Poro de permeabilidad mPTP (Salida de Citocromo c)', callbacks)}
+        >
+          <torusGeometry args={[0.72, 0.16, 14, 28]} />
+          <meshStandardMaterial color="#c084fc" roughness={0.32} metalness={0.18} />
+        </mesh>
+      </group>
 
-        <group ref={cytStreamRef}>
-          {cytTargets.map((_, idx) => (
-            <mesh
-              key={idx}
-              {...makePointerProps('cytc', 'Citocromo c liberado al citosol', callbacks)}
-            >
-              <sphereGeometry args={[0.13, 12, 10]} />
-              <meshStandardMaterial
-                color={EDITORIAL_COLORS.cytC}
-                roughness={0.3}
-                metalness={0.15}
-              />
-            </mesh>
-          ))}
-        </group>
+      {apopGeos['Apoptosome_Wheel'] && (
+        <>
+          <mesh
+            ref={wheelARef}
+            geometry={apopGeos['Apoptosome_Wheel']}
+            material={materials.apoptosome}
+            position={[1.6, 1.05, 0.4]}
+            {...makePointerProps('apoptosome', 'Complejo activo Caspasa 9 → Caspasa 3', callbacks)}
+          />
+          <mesh
+            ref={wheelBRef}
+            geometry={apopGeos['Apoptosome_Wheel']}
+            material={materials.apoptosome}
+            position={[3.1, -1.0, -0.4]}
+            {...makePointerProps('apoptosome', 'Apoptosoma ejecutor Caspasa 3', callbacks)}
+          />
+        </>
+      )}
 
-        <group ref={bodiesRef}>
-          {bodyDirs.map((_, idx) => (
-            <mesh
-              key={idx}
-              {...makePointerProps(
-                'apoptosome',
-                'Cuerpo apoptótico sellado (Sin necrosis inflamatoria)',
-                callbacks
-              )}
-            >
-              <sphereGeometry args={[0.48 + (idx % 3) * 0.12, 20, 16]} />
-              <meshPhysicalMaterial
-                color="#8b5cf6"
-                roughness={0.32}
-                clearcoat={0.3}
-                transparent
-                opacity={0.5}
-              />
-            </mesh>
-          ))}
-        </group>
+      <group ref={cytStreamRef}>
+        {cytTargets.map((_, idx) => (
+          <mesh key={idx} {...makePointerProps('cytc', 'Citocromo c en tránsito al citosol', callbacks)}>
+            <sphereGeometry args={[0.135, 12, 10]} />
+            <meshStandardMaterial color={EDITORIAL_COLORS.cytC} roughness={0.3} metalness={0.15} />
+          </mesh>
+        ))}
+      </group>
+
+      <group ref={bodiesRef}>
+        {bodyDirs.map((_, idx) => (
+          <mesh
+            key={idx}
+            {...makePointerProps(
+              'apoptosome',
+              'Cuerpo apoptótico sellado (Sin necrosis inflamatoria)',
+              callbacks
+            )}
+          >
+            <sphereGeometry args={[0.48 + (idx % 3) * 0.12, 22, 18]} />
+            <meshPhysicalMaterial
+              color="#8b5cf6"
+              roughness={0.32}
+              clearcoat={0.3}
+              transparent
+              opacity={0.5}
+            />
+          </mesh>
+        ))}
       </group>
     </group>
   );
@@ -1413,24 +1611,27 @@ export function SetScenes(props: SetScenesProps) {
       );
     case 2:
       return (
-        <Set02SilverNanoparticles
-          agConcentration={props.agConcentration}
-          materials={props.materials}
-          callbacks={props.callbacks}
-        />
-      );
-    case 3:
-      return (
-        <Set03RosemaryCorona
+        <Set02RosemaryCorona
           xrayMode={props.xrayMode}
           ligandMode={props.ligandMode}
           materials={props.materials}
           callbacks={props.callbacks}
         />
       );
+    case 3:
+      return (
+        <Set03EmbeddedNanogel
+          xrayMode={props.xrayMode}
+          ligandMode={props.ligandMode}
+          agConcentration={props.agConcentration}
+          materials={props.materials}
+          callbacks={props.callbacks}
+        />
+      );
     case 4:
       return (
-        <Set04EmbeddedNanogel
+        <Set04TumorInjection
+          localT={props.localT}
           xrayMode={props.xrayMode}
           ligandMode={props.ligandMode}
           agConcentration={props.agConcentration}
@@ -1440,45 +1641,43 @@ export function SetScenes(props: SetScenesProps) {
       );
     case 5:
       return (
-        <Set05TumorMicroenvironment
+        <Set05TissueInteraction
           localT={props.localT}
           xrayMode={props.xrayMode}
           ligandMode={props.ligandMode}
-          agConcentration={props.agConcentration}
           materials={props.materials}
           callbacks={props.callbacks}
         />
       );
     case 6:
       return (
-        <Set06TissueInteraction
+        <Set06EndocytosisEscape
           localT={props.localT}
           xrayMode={props.xrayMode}
           ligandMode={props.ligandMode}
+          agConcentration={props.agConcentration}
+          rosRate={props.rosRate}
           materials={props.materials}
           callbacks={props.callbacks}
         />
       );
     case 7:
       return (
-        <Set07EndocytosisEscape
+        <Set07MitochondrialStress
           localT={props.localT}
           xrayMode={props.xrayMode}
-          ligandMode={props.ligandMode}
           agConcentration={props.agConcentration}
           rosRate={props.rosRate}
+          pulseBoost={props.pulseBoost}
           materials={props.materials}
           callbacks={props.callbacks}
         />
       );
     case 8:
       return (
-        <Set08MitochondriaApoptosis
+        <Set08Apoptosis
           localT={props.localT}
           xrayMode={props.xrayMode}
-          agConcentration={props.agConcentration}
-          rosRate={props.rosRate}
-          pulseBoost={props.pulseBoost}
           materials={props.materials}
           callbacks={props.callbacks}
         />
