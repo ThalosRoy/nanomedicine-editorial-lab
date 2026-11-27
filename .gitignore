@@ -1,0 +1,35 @@
+# Dependencies and build outputs
+node_modules/
+web-app/node_modules/
+web-app/dist/
+
+# Local reference documents and third-party images (kept local only)
+NanoRender0.1.md.docx
+Imagenes de referencia/
+
+# Agent / local tool state
+.agents/
+.gemini/
+.claude/
+.cursor/
+*mcp*
+
+# Blender binary scenes/models (embed local filesystem paths; regenerate via scripts/build_blender_assets.py)
+*.blend
+*.blend1
+*.blend2
+*.blend3
+Blender/**/*.blend
+
+# Secrets and environment files
+.env*
+*.key
+*.pem
+*secret*
+*credentials*
+
+# OS & Editor temporary files
+.DS_Store
+Thumbs.db
+~$*
+*.log
