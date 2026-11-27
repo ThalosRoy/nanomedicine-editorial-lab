@@ -16,7 +16,7 @@ export function App() {
   const [progress, setProgress] = useState(0);
   const [isPlaying, setIsPlaying] = useState(true);
   const [loopSet, setLoopSet] = useState(false);
-  const [speedIdx, setSpeedIdx] = useState(1);
+  const [speedIdx, setSpeedIdx] = useState(0);
   const [xrayMode, setXrayMode] = useState(true);
   const [autoRotate, setAutoRotate] = useState(true);
   const [ligandMode, setLigandMode] = useState<LigandMode>('base');
@@ -125,7 +125,7 @@ export function App() {
     setProgress(0);
     setIsPlaying(true);
     setLoopSet(false);
-    setSpeedIdx(1);
+    setSpeedIdx(0);
     setXrayMode(true);
     setAutoRotate(true);
     setLigandMode('base');

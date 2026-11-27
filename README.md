@@ -77,10 +77,10 @@ NanoRender0.1/
 > **Nota de alcance:** Queda excluido cualquier módulo de síntesis de AgNPs, preparación de extractos o reacción química de reducción. El laboratorio parte del sistema ya sintetizado.
 
 1. **Set 00 — Scientific Editorial Environment:** Iluminación de estudio, cámara, escala y exhibición calibrada de las 5 familias de materiales unificadas.
-2. **Set 01 — Polymer Matrix Architecture:** Matriz porosa de **Nanocelulosa** (red fibrilar continua entrelazada con envoltura de hidrogel en corte 3/4) y **variante parametrizable de funcionalización con ligandos**.
+2. **Set 01 — Polymer Matrix Architecture:** Matriz porosa de **Nanocelulosa** (red fibrilar continua entrelazada con envoltura de hidrogel en corte 3/4, sin ligandos en su exterior).
 3. **Set 02 — Silver Nanoparticles (AgNPs):** Núcleos metálicos de plata (`Ag⁰`) micro-facetados con acabado satinado editorial y diferenciación frente a iones `Ag⁺`.
-4. **Set 03 — Rosemary Phytochemical Corona:** Recubrimiento molecular fitoquímico (*Rosmarinus officinalis*) en cepillo con puntas activas y corte 3/4.
-5. **Set 04 — Embedded Nanogel System *(Modelo Protagonista)*:** AgNPs con corona fitoquímica embebidas en las cavidades porosas del nanogel de nanocelulosa (Base vs. `+Folato`).
+4. **Set 03 — Rosemary Phytochemical Corona:** Recubrimiento molecular fitoquímico (*Rosmarinus officinalis*) en cepillo con puntas activas y corte 3/4 (+ variante de funcionalización con Ácido Fólico en las AgNPs).
+5. **Set 04 — Embedded Nanogel System *(Modelo Protagonista)*:** AgNPs con corona fitoquímica (y variante `+Folato` únicamente en las AgNPs internas) embebidas en las cavidades porosas del nanogel de nanocelulosa.
 6. **Set 05 — Tumor Tissue Microenvironment:** Esferoide tumoral heterogéneo con vasculatura angiogénica, matriz extracelular y acidez tumoral (Efecto Warburg, pH 6.2–6.8 vs. tejido sano pH 7.4).
 7. **Set 06 — Nanogel–Tissue Interaction & Ligand Targeting *(Mecanismo Propuesto)*:** Depósito local en intersticio tumoral y comparativa de acoplamiento en bicapa lipídica hacia receptores triméricos **FR-α** (Base vs. `+Folato`).
 8. **Set 07 — Endocytosis & Endosomal Escape *(Mecanismo Propuesto)*:** Endocitosis mediada por **Clatrina (CME)** y **Dinamina**; acidificación por bombas **V-ATPasa** (pH ~4.5), desprendimiento de la corona, disolución oxidativa (`Ag⁰ → Ag⁺`), peroxidación lipídica y escape al citosol.

@@ -1,8 +1,7 @@
 """
 Headless Blender 5.3 asset generator for Nanomedicine Editorial Lab.
-Builds unified 'Scientific Editorial Biomolecular' meshes across all 9 Sets,
-saves editable .blend files locally under Blender/models/, and exports clean
-glTF 2.0 (.glb) assets to exports/glb/ and web-app/public/models/.
+Authors geometry in Three.js Y-up coordinates via t3(x, y, z) -> Blender(x, -z, y),
+so glTF 2.0 exports map +X right, +Y up, +Z toward the front camera.
 """
 
 import math
@@ -16,6 +15,11 @@ ROOT_DIR = Path(__file__).resolve().parent.parent
 BLENDER_MODELS_DIR = ROOT_DIR / "Blender" / "models"
 EXPORTS_GLB_DIR = ROOT_DIR / "exports" / "glb"
 WEB_MODELS_DIR = ROOT_DIR / "web-app" / "public" / "models"
+
+
+def t3(x: float, y: float, z: float) -> Vector:
+    """Convert Three.js (x right, y up, z toward camera) to Blender (X, Y, Z) for glTF export."""
+    return Vector((x, -z, y))
 
 
 def ensure_dirs() -> None:
@@ -54,8 +58,8 @@ def make_pbr_material(
             bsdf.inputs["Transmission Weight"].default_value = transmission
         if "Alpha" in bsdf.inputs:
             bsdf.inputs["Alpha"].default_value = alpha
-    if alpha < 0.99:
-        mat.blend_method = "BLEND" if hasattr(mat, "blend_method") else "OPAQUE"
+    if alpha < 0.99 and hasattr(mat, "blend_method"):
+        mat.blend_method = "BLEND"
     return mat
 
 
@@ -148,6 +152,17 @@ def add_sphere_to_bmesh(
     bmesh.ops.create_icosphere(bm, subdivisions=subdivisions, radius=radius, matrix=mat)
 
 
+def in_front_cutaway_wedge(x: float, y: float, z: float, r_ref: float) -> bool:
+    """
+    Unified Three.js front-right 3/4 cutaway wedge facing the initial camera:
+    theta in [-0.12*pi, +0.58*pi] around (+X, +Z) and above y > -0.45 * r_ref.
+    """
+    if y <= -0.45 * r_ref:
+        return False
+    theta = math.atan2(x, z)
+    return (-0.12 * math.pi) <= theta <= (0.58 * math.pi)
+
+
 def save_and_export(asset_name: str) -> None:
     blend_path = BLENDER_MODELS_DIR / f"{asset_name}.blend"
     bpy.ops.wm.save_as_mainfile(filepath=str(blend_path))
@@ -176,9 +191,8 @@ def build_agnp_core() -> None:
     bmesh.ops.create_icosphere(bm, subdivisions=3, radius=1.0)
     for v in bm.verts:
         n = v.co.normalized()
-        # Subtle crystalline micro-faceting synthesis (Q428xXm + _sg-8F2)
         facet = 1.0 + 0.014 * math.sin(n.x * 9.0) * math.cos(n.y * 9.0) * math.sin(n.z * 9.0)
-        v.co = n * facet
+        v.co = t3(n.x * facet, n.y * facet, n.z * facet)
 
     mat_silver = make_pbr_material(
         "MAT_Silver_Satin",
@@ -191,7 +205,7 @@ def build_agnp_core() -> None:
 
 
 # ---------------------------------------------------------------------------
-# 2. Rosemary Phytochemical Corona (Dense Organic Brush + Active Tips + 3/4 Cut)
+# 2. Rosemary Phytochemical Corona (Dense Organic Brush + Front-Facing 3/4 Cut)
 # ---------------------------------------------------------------------------
 def build_rosemary_corona() -> None:
     clear_scene()
@@ -219,26 +233,26 @@ def build_rosemary_corona() -> None:
             y = 1.0 - (i / float(count - 1)) * 2.0
             r_xz = math.sqrt(max(0.0, 1.0 - y * y))
             theta = golden * i
-            dir_v = Vector((math.cos(theta) * r_xz, y, math.sin(theta) * r_xz)).normalized()
+            dx, dy, dz = math.sin(theta) * r_xz, y, math.cos(theta) * r_xz
+            dir_v = Vector((dx, dy, dz)).normalized()
 
-            # Clean 3/4 cutaway window in front-right-upper octant
-            if cutaway and dir_v.x > 0.05 and dir_v.z > 0.05 and dir_v.y > -0.25:
+            if cutaway and in_front_cutaway_wedge(dir_v.x, dir_v.y, dir_v.z, 1.0):
                 continue
 
             tangent_a = dir_v.cross(Vector((0, 1, 0)) if abs(dir_v.y) < 0.9 else Vector((1, 0, 0))).normalized()
             tangent_b = dir_v.cross(tangent_a).normalized()
             swirl_ang = rng.uniform(0, 2.0 * math.pi)
-            bend = (tangent_a * math.cos(swirl_ang) + tangent_b * math.sin(swirl_ang)) * rng.uniform(0.08, 0.17)
+            bend = (tangent_a * math.cos(swirl_ang) + tangent_b * math.sin(swirl_ang)) * rng.uniform(0.08, 0.16)
 
             pts = []
-            strand_len = rng.uniform(0.32, 0.44)
+            strand_len = rng.uniform(0.32, 0.42)
             for s in range(5):
                 t = s / 4.0
                 p = dir_v * (0.98 + t * strand_len) + bend * math.sin(t * math.pi * 0.85)
-                pts.append(p)
+                pts.append(t3(p.x, p.y, p.z))
 
-            add_tube_segment(bm_strands, pts, 0.032, 0.022, segments=6, cap_ends=True)
-            add_sphere_to_bmesh(bm_tips, pts[-1], 0.052 if i % 3 == 0 else 0.042, subdivisions=1)
+            add_tube_segment(bm_strands, pts, 0.030, 0.020, segments=6, cap_ends=True)
+            add_sphere_to_bmesh(bm_tips, pts[-1], 0.048 if i % 3 == 0 else 0.038, subdivisions=1)
 
         create_object_from_bmesh(f"Corona_Strands_{suffix}", bm_strands, mat_strand, smooth=True)
         create_object_from_bmesh(f"Corona_Tips_{suffix}", bm_tips, mat_tip, smooth=True)
@@ -249,7 +263,7 @@ def build_rosemary_corona() -> None:
 
 
 # ---------------------------------------------------------------------------
-# 3. Folic Acid Targeting Ligands (Radial Stalks + Terminal Pteridine Rings)
+# 3. Folic Acid Targeting Ligands (For AgNP Corona Only, Full & Cutaway)
 # ---------------------------------------------------------------------------
 def build_folate_ligands() -> None:
     clear_scene()
@@ -267,43 +281,49 @@ def build_folate_ligands() -> None:
         coat=0.25,
     )
 
-    bm_stalks = bmesh.new()
-    bm_heads = bmesh.new()
-    count = 14
-    golden = math.pi * (3.0 - math.sqrt(5.0))
+    def build_variant(cutaway: bool, suffix: str) -> None:
+        bm_stalks = bmesh.new()
+        bm_heads = bmesh.new()
+        count = 14
+        golden = math.pi * (3.0 - math.sqrt(5.0))
 
-    for i in range(count):
-        y = 1.0 - (i / float(count - 1)) * 2.0
-        r_xz = math.sqrt(max(0.0, 1.0 - y * y))
-        theta = golden * (i + 3)
-        dir_v = Vector((math.cos(theta) * r_xz, y, math.sin(theta) * r_xz)).normalized()
+        for i in range(count):
+            y = 1.0 - (i / float(count - 1)) * 2.0
+            r_xz = math.sqrt(max(0.0, 1.0 - y * y))
+            theta = golden * (i + 3)
+            dir_v = Vector((math.sin(theta) * r_xz, y, math.cos(theta) * r_xz)).normalized()
 
-        tangent = dir_v.cross(Vector((0, 1, 0)) if abs(dir_v.y) < 0.9 else Vector((1, 0, 0))).normalized()
-        pts = [
-            dir_v * 1.25,
-            dir_v * 1.48 + tangent * 0.06,
-            dir_v * 1.72 - tangent * 0.03,
-            dir_v * 1.92,
-        ]
-        add_tube_segment(bm_stalks, pts, 0.030, 0.024, segments=6, cap_ends=True)
+            if cutaway and in_front_cutaway_wedge(dir_v.x, dir_v.y, dir_v.z, 1.0):
+                continue
 
-        # Terminal pteridine ring approximation (torus-like ring of 8 spheres + central bead)
-        ring_center = dir_v * 2.00
-        side_a = tangent
-        side_b = dir_v.cross(side_a).normalized()
-        for k in range(8):
-            ang = (2.0 * math.pi * k) / 8.0
-            pos = ring_center + (side_a * math.cos(ang) + side_b * math.sin(ang)) * 0.11
-            add_sphere_to_bmesh(bm_heads, pos, 0.048, subdivisions=1)
-        add_sphere_to_bmesh(bm_heads, dir_v * 1.88, 0.055, subdivisions=1)
+            tangent = dir_v.cross(Vector((0, 1, 0)) if abs(dir_v.y) < 0.9 else Vector((1, 0, 0))).normalized()
+            pts = [
+                t3(*(dir_v * 1.24)),
+                t3(*(dir_v * 1.40 + tangent * 0.04)),
+                t3(*(dir_v * 1.54 - tangent * 0.02)),
+                t3(*(dir_v * 1.62)),
+            ]
+            add_tube_segment(bm_stalks, pts, 0.022, 0.018, segments=6, cap_ends=True)
 
-    create_object_from_bmesh("Folate_Stalks", bm_stalks, mat_stalk, smooth=True)
-    create_object_from_bmesh("Folate_Heads", bm_heads, mat_head, smooth=True)
+            ring_center = dir_v * 1.68
+            side_a = tangent
+            side_b = dir_v.cross(side_a).normalized()
+            for k in range(8):
+                ang = (2.0 * math.pi * k) / 8.0
+                pos = ring_center + (side_a * math.cos(ang) + side_b * math.sin(ang)) * 0.075
+                add_sphere_to_bmesh(bm_heads, t3(pos.x, pos.y, pos.z), 0.030, subdivisions=1)
+            add_sphere_to_bmesh(bm_heads, t3(*(dir_v * 1.60)), 0.036, subdivisions=1)
+
+        create_object_from_bmesh(f"Folate_Stalks_{suffix}", bm_stalks, mat_stalk, smooth=True)
+        create_object_from_bmesh(f"Folate_Heads_{suffix}", bm_heads, mat_head, smooth=True)
+
+    build_variant(cutaway=False, suffix="Full")
+    build_variant(cutaway=True, suffix="Cutaway")
     save_and_export("folate_ligands")
 
 
 # ---------------------------------------------------------------------------
-# 4. Nanocellulose Matrix (Continuous Interwoven Fibrils + Hydrogel Cutaway)
+# 4. Nanocellulose Matrix (Continuous Interwoven Fibrils + Front 3/4 Cutaway)
 # ---------------------------------------------------------------------------
 def build_nanocellulose_matrix() -> None:
     clear_scene()
@@ -342,7 +362,6 @@ def build_nanocellulose_matrix() -> None:
         Vector((1.75, 0.55, -0.95)),
     ]
 
-    # Generate multi-shell porous nodes respecting AgNP cavities
     nodes: list[Vector] = []
     shells = [(16, R * 0.48), (34, R * 0.86)]
     golden = math.pi * (3.0 - math.sqrt(5.0))
@@ -351,7 +370,7 @@ def build_nanocellulose_matrix() -> None:
             y = 1.0 - (i / float(cnt - 1)) * 2.0
             r_xz = math.sqrt(max(0.0, 1.0 - y * y))
             theta = golden * (i + s_idx * 7)
-            pos = Vector((math.cos(theta) * r_xz, y, math.sin(theta) * r_xz)) * rad
+            pos = Vector((math.sin(theta) * r_xz, y, math.cos(theta) * r_xz)) * rad
             for ag_p in ag_pockets:
                 diff = pos - ag_p
                 clearance = R * 0.25
@@ -363,7 +382,6 @@ def build_nanocellulose_matrix() -> None:
                 pos = pos.normalized() * (R * 0.94)
             nodes.append(pos)
 
-    # Build graph edges avoiding AgNP pockets
     edges: list[tuple[int, int]] = []
     conn = [0] * len(nodes)
     seen_pairs = set()
@@ -390,30 +408,29 @@ def build_nanocellulose_matrix() -> None:
             conn[j] += 1
             edges.append((i, j))
 
-    def is_cutaway_octant(v: Vector) -> bool:
-        return v.x > 0.15 and v.z > 0.15 and v.y > -0.35
-
     def build_matrix_variant(cutaway: bool, suffix: str) -> None:
         bm_fib = bmesh.new()
         bm_nod = bmesh.new()
 
-        for idx, n_pos in enumerate(nodes):
-            if cutaway and is_cutaway_octant(n_pos):
+        for n_pos in nodes:
+            if cutaway and in_front_cutaway_wedge(n_pos.x, n_pos.y, n_pos.z, R):
                 continue
-            add_sphere_to_bmesh(bm_nod, n_pos, R * 0.026, subdivisions=1)
+            add_sphere_to_bmesh(bm_nod, t3(n_pos.x, n_pos.y, n_pos.z), R * 0.026, subdivisions=1)
 
         for i, j in edges:
             p0, p1 = nodes[i], nodes[j]
-            if cutaway and (is_cutaway_octant(p0) or is_cutaway_octant(p1)):
+            if cutaway and (
+                in_front_cutaway_wedge(p0.x, p0.y, p0.z, R)
+                or in_front_cutaway_wedge(p1.x, p1.y, p1.z, R)
+            ):
                 continue
             mid = (p0 + p1) * 0.5
             ctrl = mid + (mid.normalized() * (R * 0.045) if mid.length > 1e-4 else Vector((0, 0.1, 0)))
             pts = []
             for s in range(6):
                 t = s / 5.0
-                # Quadratic Bezier
                 pt = p0 * ((1 - t) ** 2) + ctrl * (2 * (1 - t) * t) + p1 * (t ** 2)
-                pts.append(pt)
+                pts.append(t3(pt.x, pt.y, pt.z))
             add_tube_segment(bm_fib, pts, R * 0.011, R * 0.011, segments=6, cap_ends=True)
 
         create_object_from_bmesh(f"Matrix_Fibrils_{suffix}", bm_fib, mat_fibril, smooth=True)
@@ -422,33 +439,30 @@ def build_nanocellulose_matrix() -> None:
     build_matrix_variant(cutaway=False, suffix="Full")
     build_matrix_variant(cutaway=True, suffix="Cutaway")
 
-    # Outer hydrated hydrogel shell (Full & 3/4 Cutaway with wall thickness)
+    # Full hydrogel shell
     bm_shell_full = bmesh.new()
     bmesh.ops.create_uvsphere(bm_shell_full, u_segments=44, v_segments=28, radius=R)
     for v in bm_shell_full.verts:
         n = v.co.normalized()
         ripple = 1.0 + 0.012 * math.sin(n.x * 7.0 + n.y * 5.0) * math.cos(n.z * 6.0)
-        v.co = n * (R * ripple)
+        v.co = t3(n.x * R * ripple, n.y * R * ripple, n.z * R * ripple)
     create_object_from_bmesh("Hydrogel_Shell_Full", bm_shell_full, mat_shell, smooth=True)
 
-    # 3/4 cutaway hydrogel shell built cleanly via grid UV patch excluding front-right octant
+    # 3/4 cutaway hydrogel shell facing front-right camera (theta in [0.58*pi, 1.88*pi])
     bm_shell_cut = bmesh.new()
-    u_steps = 36
+    u_steps = 38
     v_steps = 24
     verts_grid = []
     for iv in range(v_steps + 1):
         phi = (math.pi * iv) / v_steps
         row = []
         for iu in range(u_steps + 1):
-            # Cover 260 degrees leaving 100-degree front inspection window
-            theta = (0.38 * math.pi) + (1.44 * math.pi) * (iu / u_steps)
-            n = Vector((
-                math.sin(phi) * math.sin(theta),
-                math.cos(phi),
-                math.sin(phi) * math.cos(theta),
-            ))
-            ripple = 1.0 + 0.012 * math.sin(n.x * 7.0 + n.y * 5.0) * math.cos(n.z * 6.0)
-            row.append(bm_shell_cut.verts.new(n * (R * ripple)))
+            theta = (0.58 * math.pi) + (1.30 * math.pi) * (iu / u_steps)
+            nx = math.sin(phi) * math.sin(theta)
+            ny = math.cos(phi)
+            nz = math.sin(phi) * math.cos(theta)
+            ripple = 1.0 + 0.012 * math.sin(nx * 7.0 + ny * 5.0) * math.cos(nz * 6.0)
+            row.append(bm_shell_cut.verts.new(t3(nx * R * ripple, ny * R * ripple, nz * R * ripple)))
         verts_grid.append(row)
 
     for iv in range(v_steps):
@@ -468,7 +482,7 @@ def build_nanocellulose_matrix() -> None:
 
 
 # ---------------------------------------------------------------------------
-# 5. Tumor Microenvironment (Bumpy Tumor Spheroid + Angiogenic Vessel + Healthy)
+# 5. Tumor Microenvironment
 # ---------------------------------------------------------------------------
 def build_tumor_microenv() -> None:
     clear_scene()
@@ -494,9 +508,7 @@ def build_tumor_microenv() -> None:
         coat=0.15,
     )
 
-    # Tumor spheroid cluster (bumpy organic cells from -MFD6qUP)
     bm_tumor = bmesh.new()
-    rng = random.Random(101)
     for i in range(24):
         ang = i * 2.39996
         rad = 1.65 + (i % 5) * 0.62
@@ -510,7 +522,7 @@ def build_tumor_microenv() -> None:
         for v in sub_bm.verts:
             n = v.co.normalized()
             bump = 1.0 + 0.11 * math.sin(n.x * 6.0 + i) * math.cos(n.y * 6.0) + 0.06 * math.sin(n.z * 9.0)
-            v.co = Vector((cx, cy, cz)) + n * (0.76 * bump)
+            v.co = t3(cx + n.x * 0.76 * bump, cy + n.y * 0.76 * bump, cz + n.z * 0.76 * bump)
         mesh_tmp = bpy.data.meshes.new("tmp_t")
         sub_bm.to_mesh(mesh_tmp)
         sub_bm.free()
@@ -518,38 +530,36 @@ def build_tumor_microenv() -> None:
         bpy.data.meshes.remove(mesh_tmp)
     create_object_from_bmesh("Tumor_Spheroid_Cluster", bm_tumor, mat_tumor, smooth=True)
 
-    # Branching angiogenic blood vessel
     bm_vessel = bmesh.new()
     main_pts = [
-        Vector((-1.5, -2.9, 1.4)),
-        Vector((0.6, -2.5, 1.8)),
-        Vector((2.5, -1.7, 2.0)),
-        Vector((4.6, -0.5, 1.4)),
-        Vector((5.9, 1.1, 0.2)),
+        t3(-1.5, -2.9, 1.4),
+        t3(0.6, -2.5, 1.8),
+        t3(2.5, -1.7, 2.0),
+        t3(4.6, -0.5, 1.4),
+        t3(5.9, 1.1, 0.2),
     ]
     add_tube_segment(bm_vessel, main_pts, 0.22, 0.16, segments=10, cap_ends=True)
     branch_a = [
-        Vector((2.4, -1.7, 2.0)),
-        Vector((2.8, -0.2, 2.3)),
-        Vector((3.4, 1.5, 1.7)),
-        Vector((4.1, 2.6, 0.7)),
+        t3(2.4, -1.7, 2.0),
+        t3(2.8, -0.2, 2.3),
+        t3(3.4, 1.5, 1.7),
+        t3(4.1, 2.6, 0.7),
     ]
     add_tube_segment(bm_vessel, branch_a, 0.15, 0.07, segments=8, cap_ends=True)
     branch_b = [
-        Vector((3.5, -1.1, 1.7)),
-        Vector((4.8, -1.8, 0.9)),
-        Vector((5.7, -2.4, -0.3)),
+        t3(3.5, -1.1, 1.7),
+        t3(4.8, -1.8, 0.9),
+        t3(5.7, -2.4, -0.3),
     ]
     add_tube_segment(bm_vessel, branch_b, 0.13, 0.06, segments=8, cap_ends=True)
     create_object_from_bmesh("Vessel_Branch", bm_vessel, mat_vessel, smooth=True)
 
-    # Ordered healthy epithelium on the left (pH 7.4 control)
     bm_healthy = bmesh.new()
     for ix in range(3):
         for iy in range(4):
             for iz in range(2):
-                center = Vector((-6.8 + ix * 1.38, -2.1 + iy * 1.40, -0.7 + iz * 1.38))
-                add_sphere_to_bmesh(bm_healthy, center, 0.62, subdivisions=2, scale=Vector((1.0, 0.90, 0.94)))
+                center = t3(-6.8 + ix * 1.38, -2.1 + iy * 1.40, -0.7 + iz * 1.38)
+                add_sphere_to_bmesh(bm_healthy, center, 0.62, subdivisions=2, scale=Vector((1.0, 0.94, 0.90)))
     create_object_from_bmesh("Healthy_Epithelium", bm_healthy, mat_healthy, smooth=True)
 
     save_and_export("tumor_microenv")
@@ -568,21 +578,19 @@ def build_receptor_fra() -> None:
         coat=0.22,
     )
     bm = bmesh.new()
-    # Transmembrane anchor stalk
     add_tube_segment(
         bm,
-        [Vector((0, -0.55, 0)), Vector((0, -0.10, 0)), Vector((0, 0.35, 0))],
+        [t3(0, -0.55, 0), t3(0, -0.10, 0), t3(0, 0.35, 0)],
         0.15,
         0.18,
         segments=10,
         cap_ends=True,
     )
-    # 3 asymmetric globular extracellular lobes forming binding cleft (OWKi__S)
     for k in range(3):
         ang = (2.0 * math.pi * k) / 3.0
-        lobe_pos = Vector((math.cos(ang) * 0.24, 0.56, math.sin(ang) * 0.24))
-        add_sphere_to_bmesh(bm, lobe_pos, 0.24, subdivisions=2, scale=Vector((1.0, 1.15, 0.92)))
-        top_pos = Vector((math.cos(ang) * 0.30, 0.78, math.sin(ang) * 0.30))
+        lobe_pos = t3(math.cos(ang) * 0.24, 0.56, math.sin(ang) * 0.24)
+        add_sphere_to_bmesh(bm, lobe_pos, 0.24, subdivisions=2, scale=Vector((1.0, 0.92, 1.15)))
+        top_pos = t3(math.cos(ang) * 0.30, 0.78, math.sin(ang) * 0.30)
         add_sphere_to_bmesh(bm, top_pos, 0.14, subdivisions=1)
 
     create_object_from_bmesh("Receptor_FR_Alpha", bm, mat_rec, smooth=True)
@@ -590,7 +598,7 @@ def build_receptor_fra() -> None:
 
 
 # ---------------------------------------------------------------------------
-# 7. Clathrin Polyhedral Cage + Dynamin Collar
+# 7. Clathrin Polyhedral Basket + Horizontal Membrane-Plane Dynamin Collar
 # ---------------------------------------------------------------------------
 def build_clathrin_cage() -> None:
     clear_scene()
@@ -609,38 +617,43 @@ def build_clathrin_cage() -> None:
     )
 
     bm_tmp = bmesh.new()
-    bmesh.ops.create_icosphere(bm_tmp, subdivisions=1, radius=2.0)
+    bmesh.ops.create_icosphere(bm_tmp, subdivisions=1, radius=1.68)
 
     bm_struts = bmesh.new()
     bm_hubs = bmesh.new()
+    # Keep open top neck in Three.js Y-up (skip vertices at very top pole y > 1.38)
     for v in bm_tmp.verts:
-        add_sphere_to_bmesh(bm_hubs, v.co, 0.11, subdivisions=1)
+        p = v.co
+        if p.z > 1.38:  # Blender Z = Three.js Y
+            continue
+        add_sphere_to_bmesh(bm_hubs, p, 0.095, subdivisions=1)
     for e in bm_tmp.edges:
-        p0 = e.verts[0].co
-        p1 = e.verts[1].co
+        p0, p1 = e.verts[0].co, e.verts[1].co
+        if p0.z > 1.38 or p1.z > 1.38:
+            continue
         mid = (p0 + p1) * 0.5
-        ctrl = mid.normalized() * 2.02
-        add_tube_segment(bm_struts, [p0, ctrl, p1], 0.045, 0.045, segments=6, cap_ends=False)
+        ctrl = mid.normalized() * 1.70
+        add_tube_segment(bm_struts, [p0, ctrl, p1], 0.040, 0.040, segments=6, cap_ends=False)
     bm_tmp.free()
 
     create_object_from_bmesh("Clathrin_Struts", bm_struts, mat_clathrin, smooth=True)
     create_object_from_bmesh("Clathrin_Hubs", bm_hubs, mat_clathrin, smooth=True)
 
-    # Helical dynamin constriction collar
+    # Horizontal helical dynamin collar in Three.js X-Z plane (wraps around vertical Y neck)
     bm_dyn = bmesh.new()
     dyn_pts = []
-    for i in range(36):
-        t = i / 35.0
-        ang = t * math.pi * 2.6
-        dyn_pts.append(Vector((math.cos(ang) * 1.12, (t - 0.5) * 0.28, math.sin(ang) * 1.12)))
-    add_tube_segment(bm_dyn, dyn_pts, 0.11, 0.11, segments=10, cap_ends=True)
+    for i in range(44):
+        t = i / 43.0
+        ang = t * math.pi * 4.4
+        dyn_pts.append(t3(math.cos(ang) * 0.95, (t - 0.5) * 0.22, math.sin(ang) * 0.95))
+    add_tube_segment(bm_dyn, dyn_pts, 0.105, 0.105, segments=10, cap_ends=True)
     create_object_from_bmesh("Dynamin_Collar", bm_dyn, mat_dynamin, smooth=True)
 
     save_and_export("clathrin_cage")
 
 
 # ---------------------------------------------------------------------------
-# 8. Mitochondrion Editorial (3/4 Cutaway Outer Shell + Cristae + mtDNA)
+# 8. Mitochondrion Editorial (Front +Z Cutaway Outer Shell + Cristae + mtDNA)
 # ---------------------------------------------------------------------------
 def build_mitochondrion_editorial() -> None:
     clear_scene()
@@ -666,7 +679,7 @@ def build_mitochondrion_editorial() -> None:
         roughness=0.38,
     )
 
-    # Outer membrane with clean front cutaway window (z > 0.35 & y > -0.3)
+    # Outer membrane with cutaway opening directly toward +Z (front camera)
     bm_outer = bmesh.new()
     u_steps = 44
     v_steps = 28
@@ -675,14 +688,15 @@ def build_mitochondrion_editorial() -> None:
         phi = (math.pi * iv) / v_steps
         row = []
         for iu in range(u_steps + 1):
-            theta = (0.40 * math.pi) + (1.42 * math.pi) * (iu / u_steps)
+            # theta=0 is +Z; span [0.35*pi, 1.65*pi] opens front +Z window
+            theta = (0.35 * math.pi) + (1.30 * math.pi) * (iu / u_steps)
             nx = math.cos(phi)
-            ny = math.sin(phi) * math.cos(theta)
-            nz = math.sin(phi) * math.sin(theta)
-            x = nx * 6.1
-            y = ny * 2.85 + math.sin(x * 0.25) * 0.30
-            z = nz * 2.85
-            row.append(bm_outer.verts.new(Vector((x, y, z))))
+            ny = math.sin(phi) * math.sin(theta)
+            nz = math.sin(phi) * math.cos(theta)
+            x = nx * 5.9
+            y = ny * 2.75 + math.sin(x * 0.25) * 0.28
+            z = nz * 2.75
+            row.append(bm_outer.verts.new(t3(x, y, z)))
         grid.append(row)
 
     for iv in range(v_steps):
@@ -698,15 +712,15 @@ def build_mitochondrion_editorial() -> None:
     bm_cristae = bmesh.new()
     bmesh.ops.create_uvsphere(bm_cristae, u_segments=72, v_segments=40, radius=1.0)
     for v in bm_cristae.verts:
-        rx = v.co.x * 5.45
-        ry = v.co.y * 2.25
-        rz = v.co.z * 2.25
+        rx = v.co.x * 5.3
+        ry = v.co.y * 2.15
+        rz = v.co.z * 2.15
         ang = math.atan2(rz, ry)
         fold = max(0.0, math.sin(rx * 2.35) * math.cos(ang * 3.0)) * 0.90
         r_scale = 1.0 - fold * 0.38
-        ry = ry * r_scale + math.sin(rx * 0.25) * 0.28
+        ry = ry * r_scale + math.sin(rx * 0.25) * 0.26
         rz *= r_scale
-        v.co = Vector((rx, ry, rz))
+        v.co = t3(rx, ry, rz)
     create_object_from_bmesh("Mito_Cristae_Inner", bm_cristae, mat_cristae, smooth=True)
 
     # Circular mitochondrial DNA double helix
@@ -714,10 +728,10 @@ def build_mitochondrion_editorial() -> None:
     pts_a, pts_b = [], []
     for i in range(73):
         t = (i / 72.0) * 2.0 * math.pi
-        r_loop = 1.25 + math.cos(t * 10.0) * 0.16
-        pts_a.append(Vector((r_loop * math.cos(t) - 1.1, math.sin(t * 10.0) * 0.16, r_loop * math.sin(t))))
-        r_loop_b = 1.25 + math.cos(t * 10.0 + math.pi) * 0.16
-        pts_b.append(Vector((r_loop_b * math.cos(t) - 1.1, math.sin(t * 10.0 + math.pi) * 0.16, r_loop_b * math.sin(t))))
+        r_loop = 1.22 + math.cos(t * 10.0) * 0.16
+        pts_a.append(t3(r_loop * math.cos(t) - 1.0, math.sin(t * 10.0) * 0.16, r_loop * math.sin(t)))
+        r_loop_b = 1.22 + math.cos(t * 10.0 + math.pi) * 0.16
+        pts_b.append(t3(r_loop_b * math.cos(t) - 1.0, math.sin(t * 10.0 + math.pi) * 0.16, r_loop_b * math.sin(t)))
     add_tube_segment(bm_dna, pts_a, 0.042, 0.042, segments=6, cap_ends=False)
     add_tube_segment(bm_dna, pts_b, 0.042, 0.042, segments=6, cap_ends=False)
     create_object_from_bmesh("Mito_MtDNA_Helix", bm_dna, mat_mtdna, smooth=True)
@@ -726,7 +740,7 @@ def build_mitochondrion_editorial() -> None:
 
 
 # ---------------------------------------------------------------------------
-# 9. Apoptosome Cell (3/4 Cutaway Bumpy Cell Cortex + Apoptosome Complex)
+# 9. Apoptosome Cell (Front +Z 3/4 Cutaway Bumpy Cell Cortex + Apoptosome)
 # ---------------------------------------------------------------------------
 def build_apoptosome_cell() -> None:
     clear_scene()
@@ -755,14 +769,13 @@ def build_apoptosome_cell() -> None:
         phi = (math.pi * iv) / v_steps
         row = []
         for iu in range(u_steps + 1):
-            theta = (0.42 * math.pi) + (1.42 * math.pi) * (iu / u_steps)
-            n = Vector((
-                math.sin(phi) * math.sin(theta),
-                math.cos(phi),
-                math.sin(phi) * math.cos(theta),
-            ))
-            bump = 1.0 + 0.045 * math.sin(n.x * 5.0) * math.cos(n.y * 5.0)
-            row.append(bm_cell.verts.new(n * (R * bump)))
+            # theta=0 is +Z; span [0.42*pi, 1.65*pi] opens front +Z camera window
+            theta = (0.42 * math.pi) + (1.23 * math.pi) * (iu / u_steps)
+            nx = math.sin(phi) * math.sin(theta)
+            ny = math.cos(phi)
+            nz = math.sin(phi) * math.cos(theta)
+            bump = 1.0 + 0.045 * math.sin(nx * 5.0) * math.cos(ny * 5.0)
+            row.append(bm_cell.verts.new(t3(nx * R * bump, ny * R * bump, nz * R * bump)))
         grid.append(row)
 
     for iv in range(v_steps):
@@ -774,14 +787,14 @@ def build_apoptosome_cell() -> None:
     sol.thickness = 0.14
     sol.offset = -1.0
 
-    # 7-spoked Apoptosome wheel (Cytochrome c + Apaf-1 + Caspase 9 -> 3)
+    # 7-spoked Apoptosome wheel facing +Z front camera
     bm_apop = bmesh.new()
-    add_sphere_to_bmesh(bm_apop, Vector((0, 0, 0)), 0.42, subdivisions=2)
+    add_sphere_to_bmesh(bm_apop, t3(0, 0, 0), 0.42, subdivisions=2)
     for k in range(7):
         ang = (2.0 * math.pi * k) / 7.0
-        dir_v = Vector((math.cos(ang), math.sin(ang), 0.0))
-        add_tube_segment(bm_apop, [dir_v * 0.25, dir_v * 1.08], 0.085, 0.065, segments=8, cap_ends=True)
-        add_sphere_to_bmesh(bm_apop, dir_v * 1.15, 0.21, subdivisions=2)
+        dx, dy = math.cos(ang), math.sin(ang)
+        add_tube_segment(bm_apop, [t3(dx * 0.25, dy * 0.25, 0), t3(dx * 1.08, dy * 1.08, 0)], 0.085, 0.065, segments=8, cap_ends=True)
+        add_sphere_to_bmesh(bm_apop, t3(dx * 1.15, dy * 1.15, 0), 0.21, subdivisions=2)
     create_object_from_bmesh("Apoptosome_Wheel", bm_apop, mat_apop, smooth=True)
 
     save_and_export("apoptosome_cell")
@@ -798,7 +811,7 @@ def main() -> None:
     build_clathrin_cage()
     build_mitochondrion_editorial()
     build_apoptosome_cell()
-    print("[DONE] All 9 unified Scientific Editorial assets built and exported.")
+    print("[DONE] All 9 unified Scientific Editorial assets rebuilt in Y-up coordinates.")
 
 
 if __name__ == "__main__":

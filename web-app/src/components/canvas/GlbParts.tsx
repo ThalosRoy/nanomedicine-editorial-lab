@@ -33,6 +33,12 @@ export function EditorialAgNPUnit({
   const tipGeo = cutawayCorona
     ? coronaGeos['Corona_Tips_Cutaway']
     : coronaGeos['Corona_Tips_Full'];
+  const folateStalkGeo = cutawayCorona
+    ? folateGeos['Folate_Stalks_Cutaway']
+    : folateGeos['Folate_Stalks_Full'];
+  const folateHeadGeo = cutawayCorona
+    ? folateGeos['Folate_Heads_Cutaway']
+    : folateGeos['Folate_Heads_Full'];
 
   return (
     <group position={position} scale={scale}>
@@ -67,24 +73,24 @@ export function EditorialAgNPUnit({
           )}
         />
       )}
-      {withFolate && folateGeos['Folate_Stalks'] && (
+      {withFolate && folateStalkGeo && (
         <mesh
-          geometry={folateGeos['Folate_Stalks']}
+          geometry={folateStalkGeo}
           material={materials.folateStalk}
           {...makePointerProps(
             'folate_np',
-            'Espaciador molecular de Ácido Fólico',
+            'Espaciador molecular de Ácido Fólico en AgNP',
             callbacks
           )}
         />
       )}
-      {withFolate && folateGeos['Folate_Heads'] && (
+      {withFolate && folateHeadGeo && (
         <mesh
-          geometry={folateGeos['Folate_Heads']}
+          geometry={folateHeadGeo}
           material={materials.folateHead}
           {...makePointerProps(
             'folate_np',
-            'Ligando de Ácido Fólico (Diana: FR-α)',
+            'Ligando de Ácido Fólico en AgNP (Diana: FR-α)',
             callbacks
           )}
         />
@@ -96,7 +102,6 @@ export function EditorialAgNPUnit({
 interface NanocelluloseScaffoldProps {
   scale?: number;
   cutaway?: boolean;
-  withFolate?: boolean;
   materials: EditorialMaterialSet;
   callbacks: InteractionCallbacks;
 }
@@ -104,12 +109,10 @@ interface NanocelluloseScaffoldProps {
 export function NanocelluloseScaffold({
   scale = 1,
   cutaway = true,
-  withFolate = false,
   materials,
   callbacks,
 }: NanocelluloseScaffoldProps) {
   const matrixGeos = useGlbGeometries(MODEL_PATHS.nanocelluloseMatrix);
-  const folateGeos = useGlbGeometries(MODEL_PATHS.folateLigands);
 
   const fibrilGeo = cutaway
     ? matrixGeos['Matrix_Fibrils_Cutaway']
@@ -155,32 +158,6 @@ export function NanocelluloseScaffold({
             callbacks
           )}
         />
-      )}
-      {withFolate && (
-        <group scale={1.92}>
-          {folateGeos['Folate_Stalks'] && (
-            <mesh
-              geometry={folateGeos['Folate_Stalks']}
-              material={materials.folateStalk}
-              {...makePointerProps(
-                'folate_np',
-                'Funcionalización superficial (+Ácido Fólico)',
-                callbacks
-              )}
-            />
-          )}
-          {folateGeos['Folate_Heads'] && (
-            <mesh
-              geometry={folateGeos['Folate_Heads']}
-              material={materials.folateHead}
-              {...makePointerProps(
-                'folate_np',
-                'Ligandos superficiales de Ácido Fólico (FR-α)',
-                callbacks
-              )}
-            />
-          )}
-        </group>
       )}
     </group>
   );

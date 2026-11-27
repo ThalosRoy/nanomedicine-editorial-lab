@@ -28,16 +28,16 @@ Este manifiesto define la estructura conceptual, visual y funcional de los **9 s
 * **Objetivo:** Calibrar la iluminación de estudio científico, escala relativa y las 5 familias maestras de materiales (*Nanocelulosa*, *Plata `Ag⁰`*, *Corona de Romero + Folato*, *Biomembrana*, *Complejo Proteico*).
 
 ### Set 01 — Polymer Matrix Architecture
-* **Objetivo:** Representar la matriz porosa tridimensional de **Nanocelulosa** como red continua de fibrillas entrelazadas con cavidades y envoltura hidratada (conmutador de corte 3/4 y variante superficial opcional con ligandos de Ácido Fólico).
+* **Objetivo:** Representar la matriz porosa tridimensional de **Nanocelulosa** como red continua de fibrillas entrelazadas con cavidades y envoltura hidratada (conmutador de corte 3/4; sin ácido fólico en el exterior del nanogel).
 
 ### Set 02 — Silver Nanoparticles (AgNPs)
 * **Objetivo:** Detallar el núcleo metálico micro-facetado de plata (`Ag⁰`, ~17.5 nm) con acabado satinado de estudio y su contraste frente a la forma iónica `Ag⁺`.
 
 ### Set 03 — Rosemary Phytochemical Corona
-* **Objetivo:** Mostrar la corona densa en cepillo de fitoquímicos de *Rosmarinus officinalis* (`–OH` y `–COOH`) anclada al núcleo de plata, con corte 3/4 para inspeccionar la interfaz núcleo–recubrimiento.
+* **Objetivo:** Mostrar la corona densa en cepillo de fitoquímicos de *Rosmarinus officinalis* (`–OH` y `–COOH`) anclada al núcleo de plata, con corte 3/4 para inspeccionar la interfaz núcleo–recubrimiento y variante opcional de funcionalización con **Ácido Fólico** sobre la nanopartícula.
 
 ### Set 04 — Embedded Nanogel System *(Modelo Protagonista)*
-* **Objetivo:** Integrar múltiples AgNPs funcionalizadas dentro de los poros de la matriz de nanocelulosa, alternando entre corte 3/4 e inspección completa, así como entre formulación Base y variante `+Folato`.
+* **Objetivo:** Integrar múltiples AgNPs funcionalizadas dentro de los poros de la matriz de nanocelulosa, alternando entre corte 3/4 e inspección completa, así como entre formulación Base y variante `+Folato` (aplicada únicamente a las AgNPs internas, no al exterior del nanogel).
 
 ### Set 05 — Tumor Tissue Microenvironment
 * **Objetivo:** Contrastar el tejido sano ordenado (`pH 7.4`) frente al esferoide tumoral heterogéneo irrigado por vasculatura angiogénica bajo **Efecto Warburg** (`pH 6.2–6.8`).

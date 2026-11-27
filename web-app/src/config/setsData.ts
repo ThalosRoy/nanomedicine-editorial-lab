@@ -32,7 +32,7 @@ export const SETS_DATA: SetMetadata[] = [
     badgeTone: 'teal',
     isProposedMechanism: false,
     defaultMol: 'nanocellulose',
-    camera: { position: [4.8, 2.8, 9.2], target: [0, 0, 0] },
+    camera: { position: [5.4, 2.3, 7.6], target: [0, 0, 0] },
   },
   {
     id: 2,
@@ -54,7 +54,7 @@ export const SETS_DATA: SetMetadata[] = [
     badgeTone: 'teal',
     isProposedMechanism: false,
     defaultMol: 'rosemary_corona',
-    camera: { position: [3.2, 1.8, 5.6], target: [0, 0, 0] },
+    camera: { position: [3.6, 1.6, 4.8], target: [0, 0, 0] },
   },
   {
     id: 4,
@@ -65,7 +65,7 @@ export const SETS_DATA: SetMetadata[] = [
     badgeTone: 'teal',
     isProposedMechanism: false,
     defaultMol: 'nanocellulose',
-    camera: { position: [5.4, 3.1, 9.6], target: [0, 0, 0] },
+    camera: { position: [5.8, 2.5, 8.0], target: [0, 0, 0] },
   },
   {
     id: 5,
@@ -93,12 +93,12 @@ export const SETS_DATA: SetMetadata[] = [
     id: 7,
     shortCode: 'SET 07',
     shortLabel: 'Endocitosis',
-    title: 'Endocitosis (Clatrina) y Escape Endosómico (Ag⁰ → Ag⁺)',
+    title: 'Endocitosis (Clatrina/Dinamina) y Escape Endosómico',
     badge: 'ESCAPE ENDOSOMAL',
     badgeTone: 'orange',
     isProposedMechanism: true,
     defaultMol: 'endosome_escape',
-    camera: { position: [3.4, 2.2, 11.4], target: [0.3, -0.2, 0] },
+    camera: { position: [1.4, 1.8, 11.4], target: [0, 0.15, 0] },
   },
   {
     id: 8,
@@ -109,7 +109,7 @@ export const SETS_DATA: SetMetadata[] = [
     badgeTone: 'plum',
     isProposedMechanism: true,
     defaultMol: 'apoptosome',
-    camera: { position: [4.2, 2.5, 13.6], target: [0.2, -0.1, 0] },
+    camera: { position: [0.8, 1.8, 13.8], target: [0, 0, 0] },
   },
 ];
 
@@ -156,12 +156,12 @@ export const MOLECULE_INFO: Record<MoleculeId, MoleculeInfo> = {
   },
   folate_np: {
     id: 'folate_np',
-    tag: 'Variante de Funcionalización',
-    title: 'Ligandos Superficiales de Ácido Fólico',
-    formula: 'Cadenas radiales + Anillo pteridina → Diana FR-α',
-    desc: 'Variante opcional conjugada con moléculas de ácido fólico orientadas hacia receptores celulares sobreexpresados.',
+    tag: 'Variante en AgNP',
+    title: 'Ácido Fólico en Núcleo/Corona de AgNP',
+    formula: 'Corona de AgNP + Ligandos Folato → Diana FR-α',
+    desc: 'Variante opcional conjugada directamente sobre las nanopartículas de plata recubiertas (el nanogel externo de nanocelulosa no lleva ácido fólico).',
     impact:
-      'Incrementa la afinidad y captura selectiva en células tumorales con alta densidad de receptores de folato FR-α.',
+      'Una vez liberadas del nanogel en el tumor, las AgNPs funcionalizadas reconocen receptores FR-α sobreexpresados.',
     accentColor: '#eab308',
   },
   base_np: {

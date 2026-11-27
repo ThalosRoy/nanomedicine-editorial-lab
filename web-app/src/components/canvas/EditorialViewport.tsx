@@ -45,12 +45,14 @@ function StudioRig({
   const targetCamPos = useRef(new THREE.Vector3(...SETS_DATA[activeSet].camera.position));
   const targetLookAt = useRef(new THREE.Vector3(...SETS_DATA[activeSet].camera.target));
   const isTransitioning = useRef(false);
+  const pauseUntilRef = useRef(0);
 
   useEffect(() => {
     const preset = SETS_DATA[activeSet].camera;
     targetCamPos.current.set(...preset.position);
     targetLookAt.current.set(...preset.target);
     isTransitioning.current = true;
+    pauseUntilRef.current = performance.now() + 2200;
   }, [activeSet, resetTrigger]);
 
   useEffect(() => {
@@ -60,6 +62,10 @@ function StudioRig({
   }, [pulseTrigger]);
 
   useFrame((_, delta) => {
+    if (controlsRef.current) {
+      controlsRef.current.autoRotate = autoRotate && performance.now() > pauseUntilRef.current;
+    }
+
     if (isTransitioning.current && controlsRef.current) {
       const alpha = 1 - Math.exp(-delta * 5.2);
       camera.position.lerp(targetCamPos.current, alpha);
@@ -101,7 +107,7 @@ function StudioRig({
         minDistance={3.0}
         maxDistance={28.0}
         autoRotate={autoRotate}
-        autoRotateSpeed={0.65}
+        autoRotateSpeed={0.16}
         onStart={() => {
           isTransitioning.current = false;
         }}
