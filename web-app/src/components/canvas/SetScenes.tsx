@@ -1422,20 +1422,19 @@ function Set08Apoptosis({
   materials: EditorialMaterialSet;
   callbacks: InteractionCallbacks;
 }) {
-  const mitoGeos = useGlbGeometries(MODEL_PATHS.mitochondrion);
   const apopGeos = useGlbGeometries(MODEL_PATHS.apoptosomeCell);
 
   const cellGroupRef = useRef<THREE.Group>(null);
-  const poreRef = useRef<THREE.Mesh>(null);
   const cytStreamRef = useRef<THREE.Group>(null);
   const wheelARef = useRef<THREE.Mesh>(null);
   const wheelBRef = useRef<THREE.Mesh>(null);
   const bodiesRef = useRef<THREE.Group>(null);
 
+  // Start Cytochrome c stream right at the tangent BAX/BAK pore opening
   const cytTargets = useMemo(
     () =>
       Array.from({ length: 18 }, (_, i) => ({
-        start: new THREE.Vector3(-1.85, -0.35, 0.45),
+        start: new THREE.Vector3(-1.33, 0.37, -0.06),
         end: (i % 2 === 0 ? new THREE.Vector3(1.6, 1.05, 0.4) : new THREE.Vector3(3.1, -1.0, -0.4)).add(
           new THREE.Vector3(Math.sin(i) * 0.45, Math.cos(i) * 0.45, 0)
         ),
@@ -1460,10 +1459,6 @@ function Set08Apoptosis({
     if (cellGroupRef.current) {
       const shrink = 1 - apopT * 0.14;
       cellGroupRef.current.scale.setScalar(shrink);
-    }
-
-    if (poreRef.current) {
-      poreRef.current.rotation.z = t * 0.7;
     }
 
     if (wheelARef.current && wheelBRef.current) {
@@ -1511,28 +1506,33 @@ function Set08Apoptosis({
         )}
       </group>
 
-      {/* Oxidatively collapsed mitochondrion releasing Cytochrome c */}
-      <group position={[-2.5, -0.9, 0]} scale={0.5} rotation={[0, 0, 0.22]}>
-        {mitoGeos['Mito_Outer_Cutaway'] && (
+      {/* Collapsed mitochondrion with true outer-membrane rupture & tangent BAX/BAK pore */}
+      <group position={[-2.6, -1.0, 0]} rotation={[0, 0, 0.12]}>
+        {apopGeos['Collapsed_Mito_Outer'] && (
           <mesh
-            geometry={mitoGeos['Mito_Outer_Cutaway']}
+            geometry={apopGeos['Collapsed_Mito_Outer']}
             material={materials.mitoOuter}
-            visible={xrayMode}
             {...makePointerProps('mito_cristae', 'Mitocondria colapsada (ΔΨm perdido)', callbacks)}
           />
         )}
-        {mitoGeos['Mito_Cristae_Inner'] && (
-          <mesh geometry={mitoGeos['Mito_Cristae_Inner']} material={materials.tumorCell} />
+        {apopGeos['Collapsed_Mito_Cristae'] && (
+          <mesh
+            geometry={apopGeos['Collapsed_Mito_Cristae']}
+            material={materials.tumorCell}
+            {...makePointerProps('mito_cristae', 'Crestas mitocondriales colapsadas', callbacks)}
+          />
         )}
-        <mesh
-          ref={poreRef}
-          position={[1.35, 1.1, 0.85]}
-          rotation={[0.4, 0.4, 0]}
-          {...makePointerProps('cytc', 'Poro de permeabilidad mPTP (Salida de Citocromo c)', callbacks)}
-        >
-          <torusGeometry args={[0.72, 0.16, 14, 28]} />
-          <meshStandardMaterial color="#c084fc" roughness={0.32} metalness={0.18} />
-        </mesh>
+        {apopGeos['Collapsed_Mito_Pore'] && (
+          <mesh
+            geometry={apopGeos['Collapsed_Mito_Pore']}
+            material={materials.apoptosome}
+            {...makePointerProps(
+              'cytc',
+              'Poro BAX/BAK / mPTP tangente a la membrana externa (Salida de Citocromo c)',
+              callbacks
+            )}
+          />
+        )}
       </group>
 
       {apopGeos['Apoptosome_Wheel'] && (

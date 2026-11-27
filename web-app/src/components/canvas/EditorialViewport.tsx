@@ -8,7 +8,12 @@ import {
   createEditorialMaterials,
   createStudioEnvironment,
 } from '../../materials/editorialMaterials';
-import type { LigandMode, MoleculeId, SetId } from '../../types/simulation';
+import type {
+  CameraPreset,
+  LigandMode,
+  MoleculeId,
+  SetId,
+} from '../../types/simulation';
 import type { InteractionCallbacks } from './glbHelpers';
 import { SetScenes } from './SetScenes';
 
@@ -26,6 +31,29 @@ interface EditorialViewportProps {
   onSelectMolecule: (id: MoleculeId) => void;
 }
 
+function computeResponsiveCamera(
+  preset: CameraPreset,
+  width: number,
+  height: number
+): { position: THREE.Vector3; target: THREE.Vector3 } {
+  const aspect = width / Math.max(1, height);
+  const distScale = THREE.MathUtils.clamp(1.18 / aspect, 1.0, 2.32);
+  const yShift = aspect < 0.85 ? -0.45 : 0;
+
+  const target = new THREE.Vector3(
+    preset.target[0],
+    preset.target[1] + yShift,
+    preset.target[2]
+  );
+  const baseTarget = new THREE.Vector3(...preset.target);
+  const offset = new THREE.Vector3(...preset.position)
+    .sub(baseTarget)
+    .multiplyScalar(distScale);
+  const position = target.clone().add(offset);
+
+  return { position, target };
+}
+
 function StudioRig({
   activeSet,
   autoRotate,
@@ -37,7 +65,7 @@ function StudioRig({
   pulseTrigger: number;
   resetTrigger: number;
 }) {
-  const { camera } = useThree();
+  const { camera, size } = useThree();
   const controlsRef = useRef<OrbitControlsImpl>(null);
   const pulseRingRef = useRef<THREE.Mesh>(null);
   const pulseState = useRef({ active: false, scale: 1, opacity: 0 });
@@ -45,15 +73,31 @@ function StudioRig({
   const targetCamPos = useRef(new THREE.Vector3(...SETS_DATA[activeSet].camera.position));
   const targetLookAt = useRef(new THREE.Vector3(...SETS_DATA[activeSet].camera.target));
   const isTransitioning = useRef(false);
+  const hasMountedRef = useRef(false);
   const pauseUntilRef = useRef(0);
 
   useEffect(() => {
-    const preset = SETS_DATA[activeSet].camera;
-    targetCamPos.current.set(...preset.position);
-    targetLookAt.current.set(...preset.target);
-    isTransitioning.current = true;
+    const fitted = computeResponsiveCamera(
+      SETS_DATA[activeSet].camera,
+      size.width,
+      size.height
+    );
+    targetCamPos.current.copy(fitted.position);
+    targetLookAt.current.copy(fitted.target);
+
+    if (!hasMountedRef.current) {
+      hasMountedRef.current = true;
+      camera.position.copy(fitted.position);
+      if (controlsRef.current) {
+        controlsRef.current.target.copy(fitted.target);
+        controlsRef.current.update();
+      }
+      isTransitioning.current = false;
+    } else {
+      isTransitioning.current = true;
+    }
     pauseUntilRef.current = performance.now() + 2200;
-  }, [activeSet, resetTrigger]);
+  }, [activeSet, resetTrigger, size.width, size.height, camera]);
 
   useEffect(() => {
     if (pulseTrigger > 0) {
@@ -105,7 +149,7 @@ function StudioRig({
         enableDamping
         dampingFactor={0.07}
         minDistance={3.0}
-        maxDistance={28.0}
+        maxDistance={55.0}
         autoRotate={autoRotate}
         autoRotateSpeed={0.16}
         onStart={() => {
@@ -159,6 +203,16 @@ export function EditorialViewport({
   const materials = useMemo(() => createEditorialMaterials(), []);
   const envTexRef = useRef<THREE.Texture | null>(null);
 
+  const initialCameraPos = useMemo<[number, number, number]>(() => {
+    if (typeof window === 'undefined') return SETS_DATA[0].camera.position;
+    const fitted = computeResponsiveCamera(
+      SETS_DATA[0].camera,
+      window.innerWidth,
+      window.innerHeight
+    );
+    return [fitted.position.x, fitted.position.y, fitted.position.z];
+  }, []);
+
   useEffect(() => {
     return () => {
       envTexRef.current?.dispose();
@@ -191,7 +245,7 @@ export function EditorialViewport({
       <Canvas
         shadows
         dpr={[1, 2]}
-        camera={{ position: SETS_DATA[0].camera.position, fov: 40, near: 0.1, far: 150 }}
+        camera={{ position: initialCameraPos, fov: 40, near: 0.1, far: 180 }}
         gl={{
           antialias: true,
           alpha: true,
@@ -226,7 +280,6 @@ export function EditorialViewport({
         </Suspense>
       </Canvas>
 
-      {/* Raycast Hover Tooltip */}
       {tooltip && (
         <div
           className="obsidian-panel"

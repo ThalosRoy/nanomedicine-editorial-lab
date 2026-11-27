@@ -878,6 +878,112 @@ def build_apoptosome_cell() -> None:
         add_sphere_to_bmesh(bm_apop, t3(dx * 1.15, dy * 1.15, 0), 0.21, subdivisions=2)
     create_object_from_bmesh("Apoptosome_Wheel", bm_apop, mat_apop, smooth=True)
 
+    # Collapsed mitochondrion with true outer-membrane rupture & tangent BAX/BAK pore
+    mat_m_outer = make_pbr_material(
+        "MAT_Collapsed_Mito_Outer",
+        (0.24, 0.54, 0.58, 1.0),
+        metallic=0.04,
+        roughness=0.28,
+        coat=0.35,
+        alpha=0.45,
+    )
+    mat_m_cristae = make_pbr_material(
+        "MAT_Collapsed_Mito_Cristae",
+        (0.64, 0.28, 0.34, 1.0),
+        metallic=0.04,
+        roughness=0.42,
+        coat=0.18,
+    )
+    mat_pore = make_pbr_material(
+        "MAT_Collapsed_Mito_Pore",
+        (0.75, 0.52, 0.98, 1.0),
+        metallic=0.16,
+        roughness=0.32,
+        coat=0.25,
+    )
+
+    rx_m, ry_m, rz_m = 2.95, 1.38, 1.38
+    phi_c, theta_c = 0.34 * math.pi, 0.52 * math.pi
+    p_pore = Vector((
+        math.cos(phi_c) * rx_m,
+        math.sin(phi_c) * math.sin(theta_c) * ry_m,
+        math.sin(phi_c) * math.cos(theta_c) * rz_m,
+    ))
+    n_pore = Vector((
+        p_pore.x / (rx_m * rx_m),
+        p_pore.y / (ry_m * ry_m),
+        p_pore.z / (rz_m * rz_m),
+    )).normalized()
+
+    bm_m_outer = bmesh.new()
+    mu_steps, mv_steps = 40, 26
+    m_grid = []
+    m_y_up = []
+    for iv in range(mv_steps + 1):
+        phi = (math.pi * iv) / mv_steps
+        row = []
+        row_y = []
+        for iu in range(mu_steps + 1):
+            theta = (0.38 * math.pi) + (1.30 * math.pi) * (iu / mu_steps)
+            px = math.cos(phi) * rx_m
+            py = math.sin(phi) * math.sin(theta) * ry_m
+            pz = math.sin(phi) * math.cos(theta) * rz_m
+            v_yup = Vector((px, py, pz))
+            row.append(bm_m_outer.verts.new(t3(px, py, pz)))
+            row_y.append(v_yup)
+        m_grid.append(row)
+        m_y_up.append(row_y)
+
+    for iv in range(mv_steps):
+        for iu in range(mu_steps):
+            center_yup = (
+                m_y_up[iv][iu]
+                + m_y_up[iv + 1][iu]
+                + m_y_up[iv + 1][iu + 1]
+                + m_y_up[iv][iu + 1]
+            ) * 0.25
+            # Punch clean circular rupture opening on outer membrane
+            if (center_yup - p_pore).length < 0.36:
+                continue
+            bm_m_outer.faces.new(
+                (m_grid[iv][iu], m_grid[iv + 1][iu], m_grid[iv + 1][iu + 1], m_grid[iv][iu + 1])
+            )
+
+    obj_m_outer = create_object_from_bmesh("Collapsed_Mito_Outer", bm_m_outer, mat_m_outer, smooth=True)
+    sol_m = obj_m_outer.modifiers.new(name="MitoCollapseThickness", type="SOLIDIFY")
+    sol_m.thickness = 0.06
+    sol_m.offset = -1.0
+
+    # Shrunken depolarized cristae cleanly inside outer membrane (zero clipping with pore)
+    bm_m_cristae = bmesh.new()
+    bmesh.ops.create_uvsphere(bm_m_cristae, u_segments=48, v_segments=28, radius=1.0)
+    for v in bm_m_cristae.verts:
+        cx = v.co.x * 2.25
+        cy = v.co.y * 0.85
+        cz = v.co.z * 0.85
+        ang = math.atan2(cz, cy)
+        fold = max(0.0, math.sin(cx * 3.8) * math.cos(ang * 3.0)) * 0.85
+        r_scale = 1.0 - fold * 0.34
+        v.co = t3(cx, cy * r_scale, cz * r_scale)
+    create_object_from_bmesh("Collapsed_Mito_Cristae", bm_m_cristae, mat_m_cristae, smooth=True)
+
+    # 8-subunit transmembrane BAX/BAK pore ring locked flush in tangent plane of n_pore
+    bm_pore = bmesh.new()
+    side_a = n_pore.cross(Vector((0, 0, 1))).normalized()
+    side_b = n_pore.cross(side_a).normalized()
+    pore_r = 0.37
+    ring_pts = []
+    for k in range(25):
+        ang = (2.0 * math.pi * k) / 24.0
+        pt = p_pore + (side_a * math.cos(ang) + side_b * math.sin(ang)) * pore_r
+        ring_pts.append(t3(pt.x, pt.y, pt.z))
+    add_tube_segment(bm_pore, ring_pts, 0.065, 0.065, segments=8, cap_ends=False)
+    for k in range(8):
+        ang = (2.0 * math.pi * k) / 8.0
+        sub_p = p_pore + (side_a * math.cos(ang) + side_b * math.sin(ang)) * pore_r + n_pore * 0.02
+        add_sphere_to_bmesh(bm_pore, t3(sub_p.x, sub_p.y, sub_p.z), 0.095, subdivisions=2)
+    create_object_from_bmesh("Collapsed_Mito_Pore", bm_pore, mat_pore, smooth=True)
+
     save_and_export("apoptosome_cell")
 
 

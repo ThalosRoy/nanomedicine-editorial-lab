@@ -21,7 +21,7 @@ export const SETS_DATA: SetMetadata[] = [
     badgeTone: 'teal',
     isProposedMechanism: false,
     defaultMol: 'editorial_studio',
-    camera: { position: [0, 3.2, 13.5], target: [0, 0.2, 0] },
+    camera: { position: [0, 3.8, 17.8], target: [0, -0.2, 0] },
   },
   {
     id: 1,
@@ -32,7 +32,7 @@ export const SETS_DATA: SetMetadata[] = [
     badgeTone: 'teal',
     isProposedMechanism: false,
     defaultMol: 'nanocellulose',
-    camera: { position: [5.4, 2.3, 7.6], target: [0, 0, 0] },
+    camera: { position: [6.8, 2.8, 10.2], target: [0, -0.15, 0] },
   },
   {
     id: 2,
@@ -43,7 +43,7 @@ export const SETS_DATA: SetMetadata[] = [
     badgeTone: 'teal',
     isProposedMechanism: false,
     defaultMol: 'rosemary_corona',
-    camera: { position: [3.6, 1.6, 4.8], target: [0, 0, 0] },
+    camera: { position: [4.8, 2.1, 6.8], target: [0, -0.1, 0] },
   },
   {
     id: 3,
@@ -54,7 +54,7 @@ export const SETS_DATA: SetMetadata[] = [
     badgeTone: 'teal',
     isProposedMechanism: false,
     defaultMol: 'nanocellulose',
-    camera: { position: [5.8, 2.5, 8.0], target: [0, 0, 0] },
+    camera: { position: [7.0, 2.9, 10.5], target: [0, -0.15, 0] },
   },
   {
     id: 4,
@@ -65,7 +65,7 @@ export const SETS_DATA: SetMetadata[] = [
     badgeTone: 'amber',
     isProposedMechanism: false,
     defaultMol: 'syringe_gel',
-    camera: { position: [1.4, 2.4, 15.6], target: [-0.2, 0.4, 0] },
+    camera: { position: [0.6, 2.8, 20.5], target: [-0.2, 0.9, 0] },
   },
   {
     id: 5,
@@ -76,7 +76,7 @@ export const SETS_DATA: SetMetadata[] = [
     badgeTone: 'amber',
     isProposedMechanism: true,
     defaultMol: 'folate_np',
-    camera: { position: [0.4, 1.8, 11.8], target: [0, -0.4, 0] },
+    camera: { position: [0.4, 2.2, 15.6], target: [0, -0.3, 0] },
   },
   {
     id: 6,
@@ -87,7 +87,7 @@ export const SETS_DATA: SetMetadata[] = [
     badgeTone: 'orange',
     isProposedMechanism: true,
     defaultMol: 'endosome_escape',
-    camera: { position: [1.4, 1.8, 11.4], target: [0, 0.15, 0] },
+    camera: { position: [1.6, 2.2, 15.0], target: [0.2, 0.1, 0] },
   },
   {
     id: 7,
@@ -98,7 +98,7 @@ export const SETS_DATA: SetMetadata[] = [
     badgeTone: 'orange',
     isProposedMechanism: true,
     defaultMol: 'gsh',
-    camera: { position: [0.4, 1.35, 9.2], target: [0, 0, 0] },
+    camera: { position: [0.5, 1.8, 14.2], target: [0, 0, 0] },
   },
   {
     id: 8,
@@ -109,7 +109,7 @@ export const SETS_DATA: SetMetadata[] = [
     badgeTone: 'plum',
     isProposedMechanism: true,
     defaultMol: 'apoptosome',
-    camera: { position: [0.8, 1.8, 13.8], target: [0, 0, 0] },
+    camera: { position: [1.0, 2.2, 18.8], target: [0, -0.1, 0] },
   },
 ];
 
