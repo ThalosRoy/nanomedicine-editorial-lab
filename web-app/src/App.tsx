@@ -60,7 +60,7 @@ export function App() {
       if (isPlaying) {
         const mult = SPEED_OPTIONS[speedIdx];
         setProgress((prev) => {
-          const next = prev + 1.85 * mult * dt;
+          const next = prev + 1.38 * mult * dt;
           if (loopSet) {
             const curIdx = Math.min(TOTAL_SETS - 1, Math.floor(prev / SET_SPAN));
             const minP = curIdx * SET_SPAN;
@@ -85,7 +85,7 @@ export function App() {
 
   const handleSelectSet = useCallback(
     (setId: SetId) => {
-      setProgress(setId * SET_SPAN + SET_SPAN * 0.12);
+      setProgress(setId * SET_SPAN);
       setSelectedMolOverride(null);
       if (setId === 5 && ligandMode === 'base') {
         setLigandMode('compare');

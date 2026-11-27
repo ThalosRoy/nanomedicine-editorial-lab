@@ -330,23 +330,30 @@ export function computeTelemetry(
     };
   }
 
-  // Set 06: Endocytosis (Clathrin/Dynamin) & Endosomal Escape
+  // Set 06: Endocytosis (Adhesion -> Wrapping -> Dynamin Scission) & Endosomal Escape
   if (stageIdx === 6) {
-    const phVal = 6.4 - localT * 1.9;
-    const escapeFactor = clamp((localT - 0.55) / 0.45, 0, 1);
+    const phVal = 7.4 - clamp((localT - 0.52) / 0.3, 0, 1) * 2.9;
+    const escapeFactor = clamp((localT - 0.74) / 0.26, 0, 1);
+    const label =
+      localT < 0.15
+        ? 'ADHESIÓN EN MEMBRANA'
+        : localT < 0.36
+          ? 'FORMACIÓN ENDOSOMA (CME)'
+          : localT < 0.55
+            ? 'ESCISIÓN POR DINAMINA'
+            : localT < 0.76
+              ? 'ACIDIFICACIÓN pH 4.5'
+              : 'ESCAPE ENDOSOMAL';
+    const tone: TelemetrySnapshot['stateTone'] =
+      localT < 0.36 ? 'teal' : localT < 0.76 ? 'amber' : 'orange';
     return {
       ph: phVal.toFixed(1),
-      deltaPsiMv: Math.round(-170 + escapeFactor * 28),
-      gshPercent: Math.round(88 - escapeFactor * 26 * agConc),
-      rosPercent: Math.round(20 + localT * 42 * rosRate),
-      agReleasePercent: Math.round(32 + escapeFactor * 68 * agConc),
-      stateLabel:
-        localT < 0.36
-          ? 'ENDOCITOSIS CME'
-          : localT < 0.66
-            ? 'ACIDIFICACIÓN pH 4.5'
-            : 'ESCAPE ENDOSOMAL',
-      stateTone: localT < 0.36 ? 'teal' : localT < 0.66 ? 'amber' : 'orange',
+      deltaPsiMv: Math.round(-172 + escapeFactor * 26),
+      gshPercent: Math.round(90 - escapeFactor * 24 * agConc),
+      rosPercent: Math.round(14 + clamp((localT - 0.55) / 0.45, 0, 1) * 48 * rosRate),
+      agReleasePercent: Math.round(28 + escapeFactor * 72 * agConc),
+      stateLabel: label,
+      stateTone: tone,
     };
   }
 
